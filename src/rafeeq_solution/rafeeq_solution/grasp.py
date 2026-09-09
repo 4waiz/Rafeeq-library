@@ -850,13 +850,13 @@ class GraspPlanner(object):
         self._base_xy, self._base_yaw = base_xy, base_yaw
         try:
             lift = min(self.LIFT, 0.4 * self.ROW_CLEARANCE)
-            q_lift, lift_info = self._solve_fixed_sign(
+            q_lift = self._solve_fixed_sign(
                 (grasp_x, ty, grasp_z + lift), base_xy, base_yaw, approach,
-                sign, q_grasp, name='lift')
+                sign, q_grasp, name='lift')[0]
         except PlanFailure:
             # A lift is preferable but not essential: with mu = 5.0 between
             # the pads and the spine the book comes out on friction alone.
-            q_lift, lift, lift_info = None, 0.0, None
+            q_lift, lift = None, 0.0
         finally:
             self.unlock_torso(saved)
             self._shelf_check = False

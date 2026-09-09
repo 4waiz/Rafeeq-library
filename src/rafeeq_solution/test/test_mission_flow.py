@@ -246,8 +246,29 @@ def test_every_valid_input_combination_is_accepted(column, colour):
     assert node.state == 'WAIT_READY'
 
 
+def test_the_trial_clock_waits_for_a_live_simulation_clock():
+    """With use_sim_time the clock reads 0 until /clock arrives, then jumps.
+
+    Latching the start time before that made the first elapsed reading equal
+    to the simulator's whole uptime, so every timeout fired at once and the
+    run failed with "controllers never became ready" 0.06 s after starting.
+    """
+    node = make()
+    node._clock.t = 0.0
+    node.tick()
+    assert node.started is None, 'started the trial clock before /clock'
+    node._clock.t = 693.0            # simulator already running
+    node.tick()
+    assert node.started == pytest.approx(693.0)
+    node.manip_ready = True
+    node.tick()
+    assert node.state == 'HOME', 'a live clock jump was treated as a timeout'
+
+
 def test_readiness_is_observed_not_slept_through():
     node = make()
+    node._clock.t = 1.0
+    node.tick()
     assert node.state == 'WAIT_READY'
     advance(node, 60.0)
     node.tick()
@@ -259,6 +280,8 @@ def test_readiness_is_observed_not_slept_through():
 
 def test_readiness_timeout_fails_rather_than_continuing():
     node = make()
+    node._clock.t = 1.0
+    node.tick()                      # start the trial clock
     advance(node, 200.0)
     node.tick()
     assert node.state == 'FAILED'
@@ -267,7 +290,9 @@ def test_readiness_timeout_fails_rather_than_continuing():
 
 def test_a_manipulation_timeout_never_counts_as_success():
     node = make()
+    node._clock.t = 1.0
     node.manip_ready = True
+    node.tick()
     node.tick()
     assert node.state == 'HOME'
     advance(node, 500.0)
@@ -278,7 +303,9 @@ def test_a_manipulation_timeout_never_counts_as_success():
 
 def test_navigation_blocked_is_not_arrival():
     node = make()
+    node._clock.t = 1.0
     node.manip_ready = True
+    node.tick()
     node.tick()
     reply(node, ok=True)
     node.tick()
@@ -291,7 +318,9 @@ def test_navigation_blocked_is_not_arrival():
 
 def test_a_reply_to_an_older_command_is_ignored():
     node = make()
+    node._clock.t = 1.0
     node.manip_ready = True
+    node.tick()
     node.tick()                      # -> HOME, sends seq 1
     seq = node.manip_seq
     node.on_manip(Msg(data='done|{}|home|'.format(seq - 1)))

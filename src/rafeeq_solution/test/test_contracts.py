@@ -205,3 +205,216 @@ def test_depth_patch_stays_useful_for_a_large_detection():
     from rafeeq_solution.image_utils import patch_half_for_bbox
     assert patch_half_for_bbox((0, 0, 200, 200)) == 4      # capped
     assert patch_half_for_bbox((0, 0, 3, 3)) == 1          # floored
+
+
+# --------------------------------------------------------------------------
+# Column association in image space
+# --------------------------------------------------------------------------
+
+def _book(u, colour='red'):
+    return {'colour': colour, 'centroid': (float(u), 100.0),
+            'bbox': (int(u) - 5, 80, 10, 60), 'area': 500.0}
+
+
+def test_columns_separate_by_image_x():
+    """Books of one column share an image x; adjacent columns are ~240 px apart."""
+    from rafeeq_solution import vision
+    books = [_book(u) for u in (290, 356, 293, 366)] +             [_book(u) for u in (107, 124, 145)]
+    clusters = vision.cluster_columns(books)
+    assert len(clusters) == 2
+    assert sorted(len(c) for c in clusters) == [3, 4]
+
+
+def test_jitter_within_a_column_does_not_split_it():
+    """+/-0.25 m of jitter is about +/-60 px at scan range; that is one column."""
+    from rafeeq_solution import vision
+    books = [_book(u) for u in (260, 290, 320, 350, 380)]
+    assert len(vision.cluster_columns(books)) == 1
+
+
+def test_the_column_in_front_of_the_robot_is_chosen():
+    from rafeeq_solution import vision
+    left = [_book(u) for u in (100, 120, 140)]
+    middle = [_book(u) for u in (300, 320, 340)]
+    right = [_book(u) for u in (520, 540, 560)]
+    clusters = vision.cluster_columns(left + middle + right)
+    chosen = vision.cluster_nearest(clusters, 320.0)
+    assert [b['centroid'][0] for b in chosen] == [300.0, 320.0, 340.0]
+
+
+def test_clustering_needs_no_robot_pose():
+    """The point of doing this in image space.
+
+    A 0.18 rad heading error - measured on this robot - rotates a deprojected
+    measurement by 0.25 m at book range without moving the base's own estimate,
+    so a world-frame column test does not cancel it. Image x needs no pose.
+    """
+    from rafeeq_solution import vision
+    import inspect
+    src = inspect.getsource(vision.cluster_columns)
+    for forbidden in ('odom', 'world', 'base_'):
+        assert forbidden not in src.split('"""')[2], (
+            'cluster_columns must not depend on any pose estimate')
+
+
+# --------------------------------------------------------------------------
+# Choosing which column the books in frame belong to
+# --------------------------------------------------------------------------
+#
+# Live failure this pins down, seed 101, column 2, colour red:
+#
+#   BOOK CONFIRMED: red book in row 2 ... measured at world (+3.004, +0.467,
+#   1.254), +0.467 m off the column centre
+#
+# Ground truth said the red book of the target column sat at y = -0.154 in the
+# top row.  The one actually reported was `book_col_2_row_3_red` at y = +0.969
+# - the red book of the *neighbouring* column, which the frame happened to
+# centre on because heading drift had swung the shelf across the image.  It was
+# picked three times running, so agreement between frames was no defence.  The
+# robot strafed to the wrong column and closed the gripper on empty air.
+
+
+def _placed(cluster, ys, colour='red'):
+    return [{'cluster': cluster, 'colour': colour,
+             'centroid': (u, 100.0), 'world': (2.9, y, 1.25)}
+            for u, y in zip(range(100, 100 + 40 * len(ys), 40), ys)]
+
+
+def _pick(ref_y, placed, width=640):
+    from rafeeq_solution import vision
+    return vision.choose_column(placed, ref_y, 0.50, width)
+
+
+def test_the_neighbouring_columns_book_is_not_chosen():
+    """The exact live failure: two columns in frame, the wrong one centred."""
+    target = _placed(0, [-0.15, 0.14, -0.13])       # the column we were sent to
+    neighbour = _placed(1, [0.97, 0.88, 0.83])      # one column over, at +1 m
+    chosen, how = _pick(-0.02, target + neighbour)   # plate, measured here
+    assert chosen is not None
+    assert {b['cluster'] for b in chosen} == {0}, (
+        'picked the neighbouring column - the failure this test exists for')
+    assert 'plate reference' in how
+
+
+def test_the_choice_survives_the_drift_that_broke_the_old_one():
+    """Drift is common-mode, so the *difference* still points at the column.
+
+    The plate and the books are measured from one stationary pose seconds
+    apart, so a 0.5 m pose error moves both together and cancels.  The old
+    image-centre test had no such cancellation, which is what put the robot in
+    front of the wrong column.
+    """
+    bias = 0.5
+    target = _placed(0, [y + bias for y in (-0.15, 0.14, -0.13)])
+    neighbour = _placed(1, [y + bias for y in (0.97, 0.88, 0.83)])
+    chosen, _ = _pick(-0.02 + bias, target + neighbour)
+    assert {b['cluster'] for b in chosen} == {0}
+
+
+def test_a_column_further_than_half_the_spacing_is_refused():
+    """Better to retry than to grasp from a column we cannot vouch for."""
+    chosen, why = _pick(0.0, _placed(0, [1.2, 1.3, 1.25]))
+    assert chosen is None
+    assert 'nearest_column' in why
+
+
+def test_without_a_plate_reference_the_fallback_is_labelled_unreliable():
+    """The fallback is the old, broken rule; a run must be traceable to it."""
+    chosen, how = _pick(None, _placed(0, [-0.15, 0.14]) + _placed(1, [0.97]))
+    assert chosen is not None
+    assert 'unreliable' in how
+
+
+def test_the_book_scan_is_only_entered_from_a_fresh_plate_reading():
+    """A reference measured before the drive has already drifted.
+
+    Both routes into the book scan - the first approach and the re-observation
+    after a failed grasp - must pass through the column-reference state, or the
+    filter silently falls back to the image centre and can pick a neighbour.
+    """
+    source = open(os.path.join(PKG, 'rafeeq_solution', 'mission_node.py'),
+                  encoding='utf-8').read()
+    tree = ast.parse(source)
+    movers = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for child in ast.walk(node):
+            if isinstance(child, ast.Constant) and child.value == 'BOOK_POSE':
+                movers.add(node.name)
+    assert movers == {'check_column_ref'}, (
+        'the book scan must be entered only from check_column_ref; these also '
+        'move to it: {}'.format(sorted(movers - {'check_column_ref'})))
+
+
+# --------------------------------------------------------------------------
+# Reading the plate directly overhead
+# --------------------------------------------------------------------------
+#
+# The plate above the target column is the one the robot most needs to read -
+# it is the only drift-free way to tell that column's books from its
+# neighbour's - and it is also the hardest, because standing in front of it
+# makes it the steepest plate in the arena.  Seen from 1.5 m away and 0.76 m
+# below, the digit is foreshortened vertically: measured live, the digit 2 came
+# out 56 x 49 px, an aspect of 1.14.
+#
+# It matched its own template at 0.827 and was then discarded by an aspect band
+# that stopped at 1.05, on the reasoning that "digits 1-5 are all taller than
+# wide".  True square on, false from below.  The robot read its neighbours'
+# plates, never its own, and fell back to picking a column by image centre.
+
+
+def _glyph(width, height):
+    """The digit 2 at an arbitrary aspect: drawn once, then scaled.
+
+    Scaling one rendering is the point - foreshortening squashes the same
+    glyph rather than drawing a different one, which is why the live match
+    still scored 0.827 while the aspect gate threw it away.
+    """
+    cv2 = pytest.importorskip('cv2')
+    import numpy as np
+    canvas = np.full((120, 80), 255, np.uint8)
+    cv2.putText(canvas, '2', (10, 104), cv2.FONT_HERSHEY_SIMPLEX,
+                3.4, 0, 8, cv2.LINE_AA)
+    return cv2.resize(canvas, (width, height),
+                      interpolation=cv2.INTER_AREA)
+
+
+def _scene(width, height):
+    """A white frame with that digit as the only dark blob in it."""
+    cv2 = pytest.importorskip('cv2')
+    import numpy as np
+    frame = np.full((240, 320, 3), 255, np.uint8)
+    glyph = cv2.cvtColor(_glyph(width, height), cv2.COLOR_GRAY2BGR)
+    frame[60:60 + height, 120:120 + width] = glyph
+    return frame
+
+
+def _templates():
+    from rafeeq_solution import vision
+    return {2: vision._normalise(vision._binarise_digit(_glyph(40, 64)))}
+
+
+def test_a_foreshortened_plate_digit_is_still_read():
+    """56 x 49 px, aspect 1.14 - the live measurement, from the book pose."""
+    from rafeeq_solution import vision
+    found = vision.detect_number_plates(_scene(56, 49), _templates())
+    assert [d['digit'] for d in found] == [2], (
+        'the plate overhead reads wider than tall and must still be read; '
+        'without it the book filter has no drift-free column reference')
+
+
+def test_a_plate_read_square_on_is_unaffected():
+    """The long-range case the column scan depends on must not regress."""
+    from rafeeq_solution import vision
+    found = vision.detect_number_plates(_scene(30, 60), _templates())
+    assert [d['digit'] for d in found] == [2]
+
+
+def test_a_hairline_smear_is_still_not_a_digit():
+    """Widening the band must not turn every dark streak into a plate."""
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution import vision
+    frame = np.full((240, 320, 3), 255, np.uint8)
+    frame[100:106, 80:240] = 0            # aspect 26.7, far outside the band
+    assert vision.detect_number_plates(frame, _templates()) == []

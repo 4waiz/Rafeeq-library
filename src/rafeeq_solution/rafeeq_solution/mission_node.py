@@ -415,12 +415,29 @@ class MissionNode(Node):
     # -- states ----------------------------------------------------------
 
     def enter_wait_ready(self):
-        self.started = self.now()
+        self.started = None
         self.get_logger().info(
             'waiting for controllers, joint feedback and odometry '
             '(no fixed sleep - readiness is observed)')
 
     def check_wait_ready(self):
+        # Do not start the trial clock until the simulation clock is real.
+        # With use_sim_time the node's clock reads 0 until the first /clock
+        # message arrives, and it then jumps to whatever the simulator is
+        # already at.  Latching the start time before that makes the very
+        # first elapsed reading enormous, and every timeout fires at once -
+        # observed as "controllers never became ready" 0.06 s after start.
+        now = self.now()
+        if now <= 0.0:
+            return None
+        if self.started is None:
+            self.started = now
+            self.entered = self.get_clock().now()
+            self.get_logger().info(
+                'simulation clock is live at t={:.1f} s; trial clock '
+                'started'.format(now))
+            return None
+
         if self.manip_ready:
             self.get_logger().info(
                 'everything reported ready after {:.1f} s'.format(
@@ -522,7 +539,42 @@ class MissionNode(Node):
 
     def check_nav_column(self):
         return self.nav_gate(
-            'BOOK_POSE', 'driving to column {}'.format(self.column_slot))
+            'COLUMN_REF_POSE',
+            'driving to column {}'.format(self.column_slot))
+
+    def enter_column_ref_pose(self):
+        """Look back up at the marker plates from where the books will be seen.
+
+        Costs one torso move and a head tilt.  It buys the book filter a
+        reference measured from this pose, which is the only way to tell our
+        column from its neighbour once odometry has drifted - see
+        ``perception_node._do_book``.
+        """
+        self.manip('scan_markers')
+
+    def check_column_ref_pose(self):
+        return self.manip_gate('COLUMN_REF')
+
+    def enter_column_ref(self):
+        self.set_mode('column_ref')
+
+    def check_column_ref(self):
+        if (self.perception_status or '').startswith('column_ref:done:'):
+            return 'BOOK_POSE'
+
+        if self.elapsed <= self.timeouts['detect']:
+            return None
+
+        # The column itself was already identified and published from the
+        # start zone, so this is a lost reference rather than a lost column.
+        # Going on means the book filter falls back to the image centre, which
+        # drift can get wrong - so say that plainly rather than bury it.
+        self.get_logger().warn(
+            'could not re-read plate {} from the book-scan pose (perception: '
+            '{!r}); continuing without a drift-matched column reference - the '
+            'book filter will fall back to the image centre'.format(
+                self.target_column, self.perception_status))
+        return 'BOOK_POSE'
 
     def enter_book_pose(self):
         self.manip('scan_books')
@@ -576,12 +628,14 @@ class MissionNode(Node):
         return None
 
     def enter_nav_stage(self):
-        """Park at the staging distance, square to the measured book."""
-        # Strafe so the book is directly ahead: it can be up to 0.25 m off the
-        # column centre and the gripper only opens to 0.052 m of pad gap.
-        x = self.book_point[0] - arena.GRASP_STANDOFF \
-            - arena.PREGRASP_STANDOFF + arena.GRASP_STANDOFF
-        self.goto(self.book_point[0] - arena.PREGRASP_STANDOFF,
+        """Park square to the measured book, far enough back to raise the arm.
+
+        Strafing to the book's own y matters: it can be up to 0.25 m off the
+        column centre and the pads only open to a 0.052 m gap.  Standing this
+        far back matters too - it is where the arm takes its grasp posture, and
+        the arm must not be able to reach the shelf while it swings there.
+        """
+        self.goto(self.book_point[0] - arena.ARM_TRANSIT_STANDOFF,
                   self.book_point[1], 0.0)
 
     def check_nav_stage(self):
@@ -683,7 +737,8 @@ class MissionNode(Node):
             self.goto(*goal)
             return None
 
-        return self.nav_gate('DETECT_BOOK', 'backing away to retry the grasp')
+        return self.nav_gate(
+            'COLUMN_REF_POSE', 'backing away to retry the grasp')
 
     def enter_lift(self):
         self.manip('lift')

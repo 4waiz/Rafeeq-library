@@ -117,6 +117,15 @@ class PerceptionNode(Node):
         # deciding whether a detected book belongs to the column the robot is
         # parked at. Covers the robot not being exactly on the column centre.
         self.declare_parameter('column_band_margin', 0.22)
+        # Image-space gap that separates one shelf column from the next. Books
+        # within a column span about +/-60 px at scan range; columns are ~240
+        # px apart.
+        self.declare_parameter('column_gap_px', 110.0)
+        # Loose world-y sanity bound relative to the robot, wide enough to
+        # tolerate heading drift.
+        # Half the 1 m column spacing: past this the books belong to a
+        # neighbour, whatever the pose estimate says.
+        self.declare_parameter('column_pick_m', 0.50)
 
         self.target_column = int(
             self.get_parameter('shelf_column_number').value)
@@ -139,6 +148,9 @@ class PerceptionNode(Node):
             self.get_parameter('tf_settle_seconds').value)
         self.column_band_margin = float(
             self.get_parameter('column_band_margin').value)
+        self.column_gap_px = float(self.get_parameter('column_gap_px').value)
+        self.column_pick_m = float(
+            self.get_parameter('column_pick_m').value)
         self.base_speed = None
         self.base_world = None
         self._stopped_at = None
@@ -160,6 +172,9 @@ class PerceptionNode(Node):
         self._votes = deque(maxlen=max(self.confirm_frames * 3, 9))
         self.column_slot = None
         self.book_row = None
+        #: Target plate y, re-measured from the pose the books are seen from.
+        self.column_ref_y = None
+        self._ref_samples = deque(maxlen=12)
 
         self.pub_column = self.create_publisher(
             Int32, '/erc/shelf_column_identification', LATCHED)
@@ -270,13 +285,15 @@ class PerceptionNode(Node):
         mode = msg.data.strip().lower()
         if mode == self.mode:
             return
-        if mode not in ('idle', 'column', 'book', 'bin'):
+        if mode not in ('idle', 'column', 'column_ref', 'book', 'bin'):
             self.get_logger().warn('ignoring unknown mode {!r}'.format(mode))
             return
         self.mode = mode
         # Clear every cached result on a mode change so a stale detection from
         # an earlier state, or an earlier run, can never satisfy a new one.
         self._votes.clear()
+        if mode == 'column_ref':
+            self._ref_samples.clear()
         self.get_logger().info('mode -> {}'.format(mode))
 
     def on_odom(self, msg):
@@ -335,6 +352,8 @@ class PerceptionNode(Node):
 
         if self.mode == 'column':
             self._do_column(bgr, msg.header)
+        elif self.mode == 'column_ref':
+            self._do_column_ref(bgr, msg.header)
         elif self.mode == 'book':
             self._do_book(bgr, msg.header)
         elif self.mode == 'bin':
@@ -390,7 +409,7 @@ class PerceptionNode(Node):
             odom_pt = self.tf_buffer.transform(
                 point, self.odom_frame,
                 timeout=Duration(seconds=self.tf_timeout))
-        except Exception as exc:
+        except Exception:
             # On this bridge the camera images are stamped 1.5-2 s *ahead* of
             # the newest transform, so an image-time lookup always asks for the
             # future.  Falling back to the latest transform is only sound when
@@ -523,79 +542,127 @@ class PerceptionNode(Node):
                 throttle_duration_sec=10.0)
         return slots
 
+    # -- mode: column_ref ------------------------------------------------
+
+    def _do_column_ref(self, bgr, header):
+        """Re-measure the target plate from wherever the robot is standing now.
+
+        The column is identified once, from the start zone.  By the time the
+        base has driven across to it, wheel odometry has drifted - 0.29 m and
+        0.18 rad over a single traverse, measured - so that first plate
+        measurement no longer agrees with anything measured from here.
+
+        Reading the same plate again from *this* pose fixes that.  The plate
+        and the books are then measured from one stationary base seconds
+        apart, so they carry the identical pose error and the difference
+        between them carries none of it.  That difference is all the book
+        filter needs.
+
+        Nothing is published.  The column was identified and announced from
+        the start zone; this is a private geometric reference, not a second
+        identification claim.
+        """
+        plates = vision.detect_number_plates(
+            bgr, self.templates, min_score=self.marker_min_score)
+        target = next(
+            (p for p in plates if p['digit'] == self.target_column), None)
+        if target is None:
+            self._status('column_ref:searching:saw={}'.format(
+                sorted(p['digit'] for p in plates)))
+            return
+
+        world = self.world_point(target['centroid'][0], target['centroid'][1],
+                                 header, bbox=target.get('bbox'))
+        if world is None:
+            self._status('column_ref:searching:no_depth')
+            return
+
+        # A continuous quantity cannot settle by repeating exactly, so agree
+        # on it the way a measurement actually agrees: enough samples, tight
+        # spread, and take the middle one.
+        self._ref_samples.append(world[1])
+        if len(self._ref_samples) < self.confirm_frames:
+            self._status('column_ref:searching:samples={}'.format(
+                len(self._ref_samples)))
+            return
+        recent = sorted(list(self._ref_samples)[-self.confirm_frames:])
+        spread = recent[-1] - recent[0]
+        if spread > 0.15:
+            self._status('column_ref:searching:spread={:.2f}'.format(spread))
+            return
+
+        self.column_ref_y = recent[len(recent) // 2]
+        self.get_logger().info(
+            'COLUMN REFERENCE: plate {} measured at y = {:+.3f} m from the '
+            'book-scan pose (spread {:.3f} m over {} frames); book columns '
+            'are now judged against this, not against the image centre'
+            .format(self.target_column, self.column_ref_y, spread,
+                    self.confirm_frames))
+        self._status('column_ref:done:{:.3f}'.format(self.column_ref_y))
+        self.mode = 'idle'
+        self._ref_samples.clear()
+
     # -- mode: book ------------------------------------------------------
 
     def _do_book(self, bgr, header):
         """Find the target book, its row, and where it physically is.
 
-        Books are selected by their **measured world position**, not by how
-        close they are to the image centre.  The pixel test that used to do
-        this assumed the robot was parked exactly on the column centre and that
-        the column therefore straddled the middle of the frame; in practice the
-        books of two columns can both be in view and neither cluster sits at
-        the centre, so the filter either dropped the target or admitted a book
-        from the wrong column.  Deprojecting each candidate and asking whether
-        it lies inside *this* column's jitter band answers the actual question.
+        Seeing the books is the easy half.  The hard half is knowing which of
+        the columns in frame is *ours*, and two earlier answers both failed:
+
+        * "the books nearest the middle of the image" assumes the robot is
+          aimed squarely at the target column.  A measured 0.18 rad of heading
+          drift swings the shelf by most of a column at book range, so the
+          frame regularly centres on a neighbour - and a red book one column
+          over looks exactly like the right one.
+        * "the books whose measured world y is near the column centre" fails
+          from the other end, because the measurement inherits the same drift
+          and lands outside the jitter band of its own column.
+
+        Both compare a measurement against something the robot only *believes*.
+        What works is comparing two things measured from the same pose: the
+        marker plate, re-read moments earlier from right here (mode
+        ``column_ref``), and the books.  Both carry the identical pose error,
+        so the gap between them carries none of it.  The target column is
+        whichever cluster of books sits under the plate we were sent to find.
         """
         books = vision.detect_books(bgr)
         if not books:
             self._status('book:searching:none')
             return
 
-        # Deproject every candidate once.
+        # Group by image x first: which detections share a column is a
+        # question about the picture, and needs no pose estimate at all.
+        clusters = vision.cluster_columns(books, self.column_gap_px)
+        if not clusters:
+            self._status('book:searching:none')
+            return
+
+        # Deproject once, up front - both the column choice and the row need
+        # it.  Heights are trustworthy even where y is not: planar odometry
+        # drift does not tilt the floor, and measured book heights match
+        # ground truth to a few millimetres, so an implausible height is a
+        # false positive rather than a book.
         placed = []
-        for book in books:
-            world = self.world_point(*book['centroid'], header=header,
-                                     bbox=book['bbox'])
-            if world is None:
-                continue
-            book = dict(book)
-            book['world'] = world
-            placed.append(book)
+        for index, cluster in enumerate(clusters):
+            for book in cluster:
+                world = self.world_point(*book['centroid'], header=header,
+                                         bbox=book['bbox'])
+                if world is None:
+                    continue
+                if not arena.row_height_plausible(world[2]):
+                    continue
+                book = dict(book)
+                book['world'] = world
+                book['cluster'] = index
+                placed.append(book)
 
         if not placed:
             self._status('book:searching:no_depth')
             return
 
-        # Column membership is judged **relative to the robot**, not against
-        # the nominal column centre in world coordinates.
-        #
-        # This matters more than it looks. The mecanum base's wheel odometry
-        # drifts: measured against Gazebo ground truth after driving to a
-        # column, the robot believed it was at world (1.381, 0.995) facing
-        # +x when it was actually at (1.147, 1.160) yawed 0.181 rad - 0.29 m
-        # and 10 degrees out. Every world-frame position derived from that
-        # pose inherits the error, which came to about 0.44 m laterally at
-        # book range and pushed every book outside its column's jitter band.
-        #
-        # The robot parks at the column it identified, so a book belonging to
-        # that column is near the robot's *own* y. Both that and the book's
-        # measured y come from the same odometry, so the drift cancels.
-        slot = self.column_slot
-        reference = None
-        if self.base_world is not None:
-            reference = self.base_world[1]
-        elif slot in arena.COLUMN_Y:
-            reference = arena.COLUMN_Y[slot]
-
-        if reference is None:
-            in_column = placed
-        else:
-            band = arena.COLUMN_JITTER + self.column_band_margin
-            in_column = [b for b in placed
-                         if abs(b['world'][1] - reference) <= band]
-
-        if not in_column:
-            self._status('book:searching:none_in_column:{}'.format(
-                ','.join('{:+.2f}'.format(b['world'][1]) for b in placed[:6])))
-            return
-
-        # Row ranking uses only the books that belong to this column, and only
-        # those at a plausible shelf height.
-        in_column = [b for b in in_column
-                     if arena.row_height_plausible(b['world'][2])]
-        if not in_column:
-            self._status('book:searching:bad_heights')
+        in_column, how = self._pick_column(placed, bgr.shape[1])
+        if in_column is None:
             return
 
         target = next(
@@ -620,6 +687,14 @@ class PerceptionNode(Node):
         self.pub_row.publish(Int32(data=int(row)))
         self._publish_target(*world)
 
+        # Carry the reference forward on the column's own measured centre, so
+        # the next look - from a pose the plate may sit too high to appear in -
+        # is judged against a reference that has drifted with the robot rather
+        # than against a stale one.
+        self.column_ref_y = (sum(b['world'][1] for b in in_column)
+                             / len(in_column))
+
+        slot = self.column_slot
         offset = (world[1] - arena.COLUMN_Y[slot]
                   if slot in arena.COLUMN_Y else 0.0)
         path = self._save(
@@ -629,17 +704,33 @@ class PerceptionNode(Node):
             ['target: {} book in row {} (row from {})'.format(
                 self.target_colour, row, method),
              'measured world ({:+.3f}, {:+.3f}, {:.3f}) m'.format(*world),
+             'column chosen by {}'.format(how),
              'offset from column centre {:+.3f} m ({} book(s) in column)'
              .format(offset, len(in_column))])
 
         self.get_logger().info(
             'BOOK CONFIRMED: {} book in row {} ({}), measured at world '
-            '({:+.3f}, {:+.3f}, {:.3f}), {:+.3f} m off the column centre '
-            '-> {}'.format(self.target_colour, row, method,
-                           world[0], world[1], world[2], offset, path))
+            '({:+.3f}, {:+.3f}, {:.3f}), {:+.3f} m off the column centre; '
+            'column chosen by {} -> {}'.format(
+                self.target_colour, row, method, world[0], world[1], world[2],
+                offset, how, path))
         self._status('book:done:{}:{}'.format(row, path))
         self.mode = 'idle'
         self._votes.clear()
+
+    def _pick_column(self, placed, width):
+        """Choose the target column's books, and report how it was decided."""
+        chosen, how = vision.choose_column(
+            placed, self.column_ref_y, self.column_pick_m, width)
+        if chosen is None:
+            self._status('book:searching:{}'.format(how))
+            return None, None
+        if self.column_ref_y is None:
+            self.get_logger().warn(
+                'no plate reference for this pose; choosing the column '
+                'nearest the image centre, which heading drift can get wrong',
+                throttle_duration_sec=10.0)
+        return chosen, how
 
     def _resolve_row(self, target, ranked, world):
         """Decide the competition row number, and say how it was decided.
