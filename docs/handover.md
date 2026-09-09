@@ -22,7 +22,7 @@ and reproducible with [`tools/diagnostics/`](../tools/diagnostics/).
 | Offline tests | 70 pytest + 23 vision, all passing, no ROS or Gazebo needed |
 | Live trials | **3 recorded** with machine-readable records in [`results/`](../results/); 2 more ran but exceeded the harness cap before a terminal state and wrote nothing |
 | Judges' launch commands | Run unmodified for every trial |
-| Fresh clone | Started; result not yet in at handover time |
+| Fresh clone | **Not completed.** `git clone` and `git archive` of this repo from the Windows filesystem into WSL both stalled — the tree vendors ~5 GB of PAL and organiser packages. What *was* verified directly against the commit: every text blob is LF, `tools/erc.sh` and the `docker/*.sh` scripts carry the executable bit, and all required files are present. The offline tests pass against the synced copy of the committed content, but **`colcon build` from a genuinely fresh `git clone` has not been run.** |
 | Real-time factor | 0.362 measured — sim seconds are ~2.8× wall seconds here |
 
 Measured rates over the 3 recorded trials:

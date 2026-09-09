@@ -65,7 +65,7 @@ organiser commits (`ae4d1d9`, `51486d7`, `0a09806`).
 1. ☐ `git status` clean; review the full diff
 2. ☐ `python3 -m pytest src/rafeeq_solution/test -q` — all pass
 3. ☐ `python3 src/rafeeq_solution/scripts/test_vision_offline.py` — all pass
-4. ☐ Fresh clone into an empty directory; `colcon build --symlink-install`; run the judges' two commands with no edits
+4. ☐ **Fresh clone into an empty directory; `colcon build --symlink-install`; run the judges' two commands with no edits.** Attempted and abandoned: cloning this tree out of the Windows filesystem into WSL stalls on the ~5 GB of vendored packages. Verified instead, directly against the commit: all text blobs are LF, shell scripts are executable, all required files present, offline tests pass. **A real fresh-clone build is still outstanding** — run it on a Linux host where the repo lives on the native filesystem.
 5. ☐ Rebuild the report from the final trial records; check page count, size and that no link is dead
 6. ☐ Confirm every README link resolves on GitHub
 7. ☐ Confirm the repository loads while signed out
