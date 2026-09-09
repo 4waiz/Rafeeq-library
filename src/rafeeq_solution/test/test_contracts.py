@@ -438,3 +438,39 @@ def test_a_hairline_smear_is_still_not_a_digit():
     frame = np.full((240, 320, 3), 255, np.uint8)
     frame[100:106, 80:240] = 0            # aspect 26.7, far outside the band
     assert vision.detect_number_plates(frame, _templates()) == []
+
+
+# --------------------------------------------------------------------------
+# A measurement that is not at a row height is not a book
+# --------------------------------------------------------------------------
+
+
+def test_a_measurement_between_two_rows_is_not_a_book():
+    """Seed 202, column 4, blue, on the look after a failed grasp.
+
+    A blue book confirmed in row 4 at z = 0.597 came back as row 3 at
+    z = 1.080 - 0.163 m from the nearest row, and 0.32 m behind the plane the
+    books sit in, so the depth patch had landed on shelf structure.  The old
+    gate accepted it because it asked only whether z was within *half a row
+    spacing* of some row, which every z between two rows is.  The robot drove
+    at it and the run failed navigating onto a book that was not there.
+    """
+    assert not arena.row_height_plausible(1.080), (
+        'accepted a measurement 0.163 m from the nearest row')
+
+
+@pytest.mark.parametrize('measured,row', [
+    (1.586, 1), (1.588, 1), (1.580, 1),      # every measured centre from the
+    (0.931, 3), (0.936, 3),                  # recorded trials, against the
+    (0.569, 4), (0.597, 4),                  # row it really belonged to
+])
+def test_every_genuine_measurement_is_still_accepted(measured, row):
+    assert arena.row_height_plausible(measured)
+    assert arena.nearest_row(measured) == row
+    assert abs(arena.ROW_Z[row] - measured) < arena.ROW_HEIGHT_TOLERANCE
+
+
+def test_the_tolerance_leaves_real_headroom_over_the_worst_measurement():
+    """Worst live miss was 0.019 m; the gate is at 0.08 m."""
+    assert arena.ROW_HEIGHT_TOLERANCE >= 0.019 * 2
+    assert arena.ROW_HEIGHT_TOLERANCE < arena.ROW_SPACING / 2.0

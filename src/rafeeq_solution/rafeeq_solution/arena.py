@@ -267,10 +267,21 @@ def nearest_row(world_z):
     return min(ROW_Z, key=lambda r: abs(ROW_Z[r] - world_z))
 
 
+#: How far a measured book centre may sit from its nominal row height.
+#: Half the row spacing - the old default - is not a test at all: every z
+#: between two rows is within half a spacing of one of them.  A measurement
+#: 0.163 m adrift passed it, was snapped to a row it was not in, and the robot
+#: drove at it.  Real detections do far better than this: across the recorded
+#: trials the measured centres missed their nominal rows by 0.003 to 0.019 m,
+#: so 0.08 m accepts every genuine book with room to spare while rejecting
+#: anything that landed on shelf structure instead.
+ROW_HEIGHT_TOLERANCE = 0.08
+
+
 def row_height_plausible(world_z, tolerance=None):
     """True if ``world_z`` is close enough to a real row to be a book."""
     if tolerance is None:
-        tolerance = ROW_SPACING / 2.0
+        tolerance = ROW_HEIGHT_TOLERANCE
     row = nearest_row(world_z)
     return abs(ROW_Z[row] - world_z) <= tolerance
 

@@ -681,6 +681,17 @@ class PerceptionNode(Node):
             self._status('book:searching:ambiguous:{}'.format(len(ranked)))
             return
 
+        # The row has already been published once this run; a later look that
+        # disagrees is a bad measurement or a book that has been knocked out of
+        # place, and either way re-publishing would contradict a claim already
+        # made on /erc/shelf_row_identification.  Seen live: a blue book
+        # confirmed in row 4 at z = 0.597 came back as row 3 at z = 1.080 - not
+        # a row height at all - after a failed grasp, and the robot drove at it.
+        if self.book_row is not None and row != self.book_row:
+            self._status('book:searching:row_{}_contradicts_published_{}'
+                         .format(row, self.book_row))
+            return
+
         self._votes.append(row)
         if not self._settled(row):
             return
