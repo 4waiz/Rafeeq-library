@@ -282,7 +282,8 @@ def _placed(cluster, ys, colour='red'):
 
 def _pick(ref_y, placed, width=640):
     from rafeeq_solution import vision
-    return vision.choose_column(placed, ref_y, 0.50, width)
+    return vision.choose_column(placed, ref_y, arena.COLUMN_JITTER + 0.15,
+                                width)
 
 
 def test_the_neighbouring_columns_book_is_not_chosen():
@@ -315,7 +316,26 @@ def test_a_column_further_than_half_the_spacing_is_refused():
     """Better to retry than to grasp from a column we cannot vouch for."""
     chosen, why = _pick(0.0, _placed(0, [1.2, 1.3, 1.25]))
     assert chosen is None
-    assert 'nearest_column' in why
+    assert 'nearest_book' in why
+
+
+def test_a_cluster_straddling_two_columns_is_split_by_the_plate():
+    """Seed 404, column 5, green: the cluster mean lied and the book was wrong.
+
+    Perspective closed the image gap between two columns enough that one
+    cluster held books from both.  Its mean sat 0.42 m from the plate - inside
+    any sane cluster tolerance - while the book it yielded sat 0.755 m away,
+    three times the jitter a book can have.  Membership is per book for exactly
+    this reason.
+    """
+    straddling = _placed(0, [0.55, 0.45, 1.30, 1.25])
+    chosen, _ = _pick(0.547, straddling)
+    assert chosen is not None
+    kept = sorted(round(b['world'][1], 2) for b in chosen)
+    assert kept == [0.45, 0.55], (
+        'kept a book {} m from its plate; books jitter by at most {} m'
+        .format(max(abs(b['world'][1] - 0.547) for b in chosen),
+                arena.COLUMN_JITTER))
 
 
 def test_without_a_plate_reference_the_fallback_is_labelled_unreliable():

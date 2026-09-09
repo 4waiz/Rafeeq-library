@@ -290,49 +290,52 @@ def cluster_nearest(clusters, u):
                key=lambda c: abs(sum(b['centroid'][0] for b in c) / len(c) - u))
 
 
-def choose_column(placed, ref_y, max_gap, width):
+def choose_column(placed, ref_y, band, width):
     """Pick the detections belonging to the target column.
 
-    ``placed`` are book detections that already carry a ``cluster`` index from
+    ``placed`` are book detections carrying a ``cluster`` index from
     :func:`cluster_columns` and a deprojected ``world`` position.  Returns
-    ``(books, how)``, or ``(None, reason)`` when no cluster can be trusted.
+    ``(books, how)``, or ``(None, reason)`` when nothing can be trusted.
 
     ``ref_y`` is the target marker plate's measured ``y``, read from the same
     base pose as the books.  That is the whole point of it: wheel odometry on
-    this robot drifts 0.29 m and 0.18 rad over one traverse, so any test of a
+    this robot drifts 0.29 m and 0.18 rad over one traverse, so testing a
     measurement against a *believed* column centre inherits that error.  Two
-    measurements taken from one stationary pose inherit it equally, so the
-    distance between them does not, and the target column is simply whichever
-    cluster sits closest to the plate we were sent to find.
+    measurements from one stationary pose inherit it equally, so the distance
+    between them does not - and a book belongs to this column exactly when it
+    sits within ``band`` of the plate above it.
 
-    With no plate reference the fallback is the middle of the frame, which is
-    right only when the robot is squarely aimed at the column - the caller is
-    told so in ``how`` because that assumption is what picked a neighbouring
-    column's red book in an earlier run.
+    Membership is decided per book rather than per cluster.  Perspective can
+    close the image gap between two columns enough that one cluster straddles
+    both, and a straddling cluster has a plausible-looking *mean* while
+    containing books from the wrong column: on one run the cluster mean sat
+    0.42 m from the plate, inside any sane cluster tolerance, while the book it
+    yielded was 0.755 m away - three times the jitter a book can actually have.
+
+    Without a plate reference the fallback is the cluster nearest the middle of
+    the frame, which is right only when the robot is squarely aimed at the
+    column.  The caller is told so in ``how``, because that assumption is what
+    picked a neighbouring column's red book in an earlier run.
     """
+    if not placed:
+        return None, 'no deprojected books'
+
+    if ref_y is not None:
+        kept = [b for b in placed if abs(b['world'][1] - ref_y) <= band]
+        if not kept:
+            nearest = min(abs(b['world'][1] - ref_y) for b in placed)
+            return None, 'nearest_book_{:.2f}m_from_plate'.format(nearest)
+        return kept, ('plate reference (y {:+.3f}, {} book(s) within {:.2f} m)'
+                      .format(ref_y, len(kept), band))
+
     groups = {}
     for book in placed:
         groups.setdefault(book['cluster'], []).append(book)
-    if not groups:
-        return None, 'no deprojected books'
-
-    def centre_y(group):
-        return sum(b['world'][1] for b in group) / len(group)
-
-    def centre_u(group):
-        return sum(b['centroid'][0] for b in group) / len(group)
-
-    if ref_y is not None:
-        _, group = min(groups.items(),
-                       key=lambda kv: abs(centre_y(kv[1]) - ref_y))
-        gap = abs(centre_y(group) - ref_y)
-        if gap > max_gap:
-            return None, 'nearest_column_{:.2f}m_away'.format(gap)
-        return group, 'plate reference (y {:+.3f}, {:.2f} m away)'.format(
-            ref_y, gap)
 
     _, group = min(groups.items(),
-                   key=lambda kv: abs(centre_u(kv[1]) - width / 2.0))
+                   key=lambda kv: abs(
+                       sum(b['centroid'][0] for b in kv[1]) / len(kv[1])
+                       - width / 2.0))
     return group, 'image centre (no plate reference - unreliable)'
 
 

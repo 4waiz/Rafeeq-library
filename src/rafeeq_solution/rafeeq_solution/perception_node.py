@@ -123,9 +123,11 @@ class PerceptionNode(Node):
         self.declare_parameter('column_gap_px', 110.0)
         # Loose world-y sanity bound relative to the robot, wide enough to
         # tolerate heading drift.
-        # Half the 1 m column spacing: past this the books belong to a
-        # neighbour, whatever the pose estimate says.
-        self.declare_parameter('column_pick_m', 0.50)
+        # A book sits within the organiser's +/-0.25 m jitter of its column
+        # centre; the rest is measurement slack against the plate reference,
+        # which live runs put at about 0.02 m.  Past this the book belongs to
+        # a neighbouring column, whatever the pose estimate says.
+        self.declare_parameter('column_band_m', arena.COLUMN_JITTER + 0.15)
 
         self.target_column = int(
             self.get_parameter('shelf_column_number').value)
@@ -149,8 +151,8 @@ class PerceptionNode(Node):
         self.column_band_margin = float(
             self.get_parameter('column_band_margin').value)
         self.column_gap_px = float(self.get_parameter('column_gap_px').value)
-        self.column_pick_m = float(
-            self.get_parameter('column_pick_m').value)
+        self.column_band_m = float(
+            self.get_parameter('column_band_m').value)
         self.base_speed = None
         self.base_world = None
         self._stopped_at = None
@@ -687,16 +689,29 @@ class PerceptionNode(Node):
         self.pub_row.publish(Int32(data=int(row)))
         self._publish_target(*world)
 
+        # How far the book sits off its column's centre - the number a reader
+        # checks against the organiser's +/-0.25 m jitter.  Measure it against
+        # the plate we just read, not against the nominal centre: both the book
+        # and the plate carry the same pose error, so their difference is the
+        # real offset, while the nominal comparison would report mostly
+        # odometry drift and look like a fault.
+        plate_y = self.column_ref_y
+        slot = self.column_slot
+        if plate_y is not None:
+            offset = world[1] - plate_y
+            against = 'measured plate'
+        elif slot in arena.COLUMN_Y:
+            offset = world[1] - arena.COLUMN_Y[slot]
+            against = 'nominal centre, uncorrected for drift'
+        else:
+            offset, against = 0.0, 'nothing'
+
         # Carry the reference forward on the column's own measured centre, so
         # the next look - from a pose the plate may sit too high to appear in -
         # is judged against a reference that has drifted with the robot rather
         # than against a stale one.
         self.column_ref_y = (sum(b['world'][1] for b in in_column)
                              / len(in_column))
-
-        slot = self.column_slot
-        offset = (world[1] - arena.COLUMN_Y[slot]
-                  if slot in arena.COLUMN_Y else 0.0)
         path = self._save(
             bgr, [target],
             [lambda d: '{} BOOK - ROW {}'.format(d['colour'].upper(), row)],
@@ -705,15 +720,15 @@ class PerceptionNode(Node):
                 self.target_colour, row, method),
              'measured world ({:+.3f}, {:+.3f}, {:.3f}) m'.format(*world),
              'column chosen by {}'.format(how),
-             'offset from column centre {:+.3f} m ({} book(s) in column)'
-             .format(offset, len(in_column))])
+             'offset from column centre {:+.3f} m vs {} ({} book(s) in '
+             'column)'.format(offset, against, len(in_column))])
 
         self.get_logger().info(
             'BOOK CONFIRMED: {} book in row {} ({}), measured at world '
-            '({:+.3f}, {:+.3f}, {:.3f}), {:+.3f} m off the column centre; '
-            'column chosen by {} -> {}'.format(
+            '({:+.3f}, {:+.3f}, {:.3f}), {:+.3f} m off the column centre '
+            '(against the {}); column chosen by {} -> {}'.format(
                 self.target_colour, row, method, world[0], world[1], world[2],
-                offset, how, path))
+                offset, against, how, path))
         self._status('book:done:{}:{}'.format(row, path))
         self.mode = 'idle'
         self._votes.clear()
@@ -721,7 +736,7 @@ class PerceptionNode(Node):
     def _pick_column(self, placed, width):
         """Choose the target column's books, and report how it was decided."""
         chosen, how = vision.choose_column(
-            placed, self.column_ref_y, self.column_pick_m, width)
+            placed, self.column_ref_y, self.column_band_m, width)
         if chosen is None:
             self._status('book:searching:{}'.format(how))
             return None, None

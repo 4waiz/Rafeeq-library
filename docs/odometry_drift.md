@@ -49,6 +49,7 @@ so the error is common-mode and cancels.**
 | Navigate to the nominal centre of the identified slot | Navigate to the **measured position of the plate that was read**. |
 | `grasp.check_target` compared x and y against absolute arena constants | Compares the target's position **relative to the base** (range ahead, offset to the side). Height stays absolute — planar drift does not affect z, and measured heights match ground truth to a few millimetres. |
 | Shelf-clearance geometry anchored to `arena.SHELF_FRONT_X` | Anchored to the **measured book**, offset by the known 0.065 m recess. |
+| Book column membership decided by which cluster sat nearest the image centre | Decided against the **marker plate re-read from the same pose**, seconds before the books - see below. |
 
 The grasp targeting was already immune: `perception` converts camera → odom →
 world and `grasp` converts world → base using the base's odometry-derived
@@ -61,13 +62,71 @@ return to the start zone, approach the bin). They are tolerant of tenths of a
 metre, but they are the remaining place where drift accumulates unchecked. The
 principled fixes, in increasing order of effort:
 
-1. Re-observe a landmark and correct the pose estimate before each stage that
-   needs metric accuracy — the shelf face and the number plates are both
-   suitable and already detected.
+1. ~~Re-observe a landmark before each stage that needs metric accuracy.~~
+   **Done for the book scan** — the plate above the target column is re-read
+   from the book-scan pose and the books are judged against it. The section
+   below has the measurements. The same trick would suit the bin approach and
+   has not been applied there.
 2. Fuse the base IMU (`/base_imu`, already bridged) for heading, which is where
    most of the error is.
 3. Stand up AMCL against a map of the static arena. Nav2 is installed but the
    organiser launch never brings it up, so this is the largest change.
+
+## The failure this finally caused, and the landmark fix
+
+Everything above says the same thing: a measurement may only be compared with
+something that shares its drift. Book selection broke that rule in a way that
+took a ground-truth check to see.
+
+Running seed 101, column 2, colour red, the solution reported:
+
+```
+BOOK CONFIRMED: red book in row 2 ... measured at world (+3.004, +0.467, 1.254),
++0.467 m off the column centre
+```
+
+It reported it three times running, from three separate looks, agreeing to
+0.02 m. Ground truth says the target column's red book is `book_col_3_row_2_red`
+at y = **−0.154**, in row 1. What was being reported was `book_col_2_row_3_red`
+at y = **+0.969** — the red book of the *next column over*. The robot strafed to
+it and closed the gripper on empty air.
+
+The filter picked whichever cluster of books lay nearest the middle of the
+frame. That is the target column only if the robot is aimed at it; with 0.18 rad
+of heading error it frequently is not. Repeatability was no defence, because
+drift is a bias and not noise — three looks from the same wrong pose agree
+beautifully.
+
+### What replaced it
+
+The marker plate is re-read from the book-scan pose itself, in a dedicated
+`COLUMN_REF` mission state, immediately before the books are looked at. Plate
+and books are then measured from one stationary base seconds apart, so they
+carry the *identical* pose error, and the target column is simply whichever
+cluster of books sits nearest that plate. The drift cancels in the subtraction.
+
+Measured on the run that had been failing:
+
+| | Measured y | Ground truth |
+|---|---|---|
+| Plate above the target column | −0.428 | 0.000 |
+| Target book | −0.599 | −0.154 |
+| **Book relative to its plate** | **−0.171** | **−0.154** |
+
+Both absolute figures are 0.43 m wrong. The difference — the only quantity the
+filter uses — is good to 0.017 m.
+
+### The bug that had been hiding it
+
+The re-read did not work at first: the robot read its neighbours' plates and
+never its own. Standing in front of a column makes the plate above it the
+steepest in the arena, 0.76 m up at 1.5 m range, so its digit is foreshortened
+vertically. Measured from the book-scan pose, the digit `2` came out 56 × 49 px
+— an aspect of **1.14**. It matched its own template at **0.827** and was then
+discarded by an aspect filter that stopped at 1.05, on the reasoning that the
+digits are all taller than wide. True read square on; false read from below.
+The band is now 0.25–1.40, with the template score left to do the real work.
+
 
 ## Reproducing it
 
