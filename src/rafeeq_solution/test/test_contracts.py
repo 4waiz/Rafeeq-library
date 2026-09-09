@@ -474,3 +474,62 @@ def test_the_tolerance_leaves_real_headroom_over_the_worst_measurement():
     """Worst live miss was 0.019 m; the gate is at 0.08 m."""
     assert arena.ROW_HEIGHT_TOLERANCE >= 0.019 * 2
     assert arena.ROW_HEIGHT_TOLERANCE < arena.ROW_SPACING / 2.0
+
+
+# --------------------------------------------------------------------------
+# The evidence images a judge actually reads
+# --------------------------------------------------------------------------
+
+
+def test_a_long_caption_line_wraps_instead_of_running_off_the_frame():
+    """One evidence image was cut off mid-way through the book's offset."""
+    from rafeeq_solution import vision
+    line = ('offset from column centre -0.254 m, against the plate re-read '
+            'from the book-scan pose, four books in this column')
+    rows = vision.wrap_to_width(line, 640 - 8 - 6)
+    assert len(rows) > 1
+    import cv2
+    for row in rows:
+        (width, _), _ = cv2.getTextSize(
+            row, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        assert width <= 640 - 8 - 6, 'a wrapped row still overflows the frame'
+    assert ' '.join(rows) == line, 'wrapping dropped or duplicated words'
+
+
+def test_a_label_on_a_top_row_book_does_not_land_on_the_caption():
+    """A book in the top row has its box against the top of the image.
+
+    The label used to be clamped upwards into the caption block, leaving both
+    unreadable on the one image the rules ask a judge to look at.  The box
+    itself may sit inside the caption band - that is where the book is - but
+    the label, which is far wider than the box, must not.
+    """
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution import vision
+    frame = np.zeros((360, 640, 3), np.uint8)
+    x, y, w, h = 300, 12, 20, 60
+    caption_height = 90
+
+    out = vision.annotate(frame, [{'bbox': (x, y, w, h), 'colour': 'green'}],
+                          lambda d: 'GREEN BOOK - ROW 1',
+                          avoid_top=caption_height)
+    painted = np.argwhere(out.any(axis=2))
+    in_caption = painted[painted[:, 0] < caption_height]
+    assert len(in_caption), 'the box itself should still be drawn'
+    assert in_caption[:, 1].min() >= x - 2 and in_caption[:, 1].max() <= x + w + 2, (
+        'something wider than the box was drawn into the caption block - '
+        'the label was not moved clear of it')
+
+
+def test_a_label_near_the_right_edge_stays_inside_the_frame():
+    """A book at the right of frame must not push its label off the image."""
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution import vision
+    frame = np.zeros((360, 640, 3), np.uint8)
+    x = 600
+    out = vision.annotate(frame, [{'bbox': (x, 200, 20, 60), 'colour': 'red'}],
+                          lambda d: 'RED BOOK - ROW 3')
+    columns = np.argwhere(out.any(axis=2))[:, 1]
+    assert columns.max() <= frame.shape[1] - 1, 'drawing ran off the frame'
+    assert columns.min() < x, (
+        'the label was left at the box, where it would run off the frame')

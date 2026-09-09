@@ -428,17 +428,27 @@ def column_box_from_plate(plate, shape, column_width_ratio=1.9,
     return (x0, y0, max(1, x1 - x0), max(1, y1 - y0))
 
 
-def annotate_many(bgr, detections, label_fns, thickness=2):
+def annotate_many(bgr, detections, label_fns, thickness=2, avoid_top=0):
     """Draw several labelled boxes, each with its own label function."""
     out = bgr.copy()
     for det, label_fn in zip(detections, label_fns):
-        out = annotate(out, [det], label_fn, thickness=thickness)
+        out = annotate(out, [det], label_fn, thickness=thickness,
+                       avoid_top=avoid_top)
     return out
 
 
-def annotate(bgr, detections, label_fn, thickness=2):
-    """Draw labelled bounding boxes on a copy of ``bgr``."""
+def annotate(bgr, detections, label_fn, thickness=2, avoid_top=0):
+    """Draw labelled bounding boxes on a copy of ``bgr``.
+
+    ``avoid_top`` is the height of the caption block burnt into the top of the
+    frame.  A book in the top row of the shelf has its box near the top of the
+    image, and a label drawn above that box lands on the caption - both then
+    unreadable, on an image a judge is meant to read.  The label goes below the
+    box instead when it would collide, and is pulled back from the right edge
+    so it cannot run off the frame.
+    """
     out = bgr.copy()
+    height, width = out.shape[:2]
 
     for det in detections:
         x, y, w, h = det['bbox']
@@ -448,20 +458,56 @@ def annotate(bgr, detections, label_fn, thickness=2):
         label = label_fn(det)
         (tw, th), _ = cv2.getTextSize(
             label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        ty = max(th + 4, y - 4)
-        cv2.rectangle(out, (x, ty - th - 4), (x + tw + 4, ty + 2), colour, -1)
-        cv2.putText(out, label, (x + 2, ty - 2), cv2.FONT_HERSHEY_SIMPLEX,
+
+        ty = y - 4
+        if ty - th - 4 < avoid_top:
+            # Below the box - and below the caption too.  Dropping it just
+            # under the box is not enough when the box starts above the
+            # caption's last line, which is exactly the top-row case.
+            ty = min(max(y + h + th + 8, avoid_top + th + 6), height - 4)
+        tx = max(0, min(x, width - tw - 6))
+
+        cv2.rectangle(out, (tx, ty - th - 4), (tx + tw + 4, ty + 2), colour, -1)
+        cv2.putText(out, label, (tx + 2, ty - 2), cv2.FONT_HERSHEY_SIMPLEX,
                     0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
     return out
 
 
+def wrap_to_width(line, pixels, scale=0.5):
+    """Split ``line`` into pieces that each fit inside ``pixels``."""
+    words = line.split(' ')
+    rows, current = [], ''
+    for word in words:
+        trial = word if not current else current + ' ' + word
+        (tw, _), _ = cv2.getTextSize(
+            trial, cv2.FONT_HERSHEY_SIMPLEX, scale, 1)
+        if tw <= pixels or not current:
+            current = trial
+        else:
+            rows.append(current)
+            current = word
+    if current:
+        rows.append(current)
+    return rows
+
+
 def stamp(bgr, lines, origin=(8, 18)):
-    """Burn a few lines of status text into the top-left of an image."""
+    """Burn a few lines of status text into the top-left of an image.
+
+    Lines wrap to the frame width rather than running off the right edge.  A
+    caption that loses its last few words loses exactly the part a reader was
+    meant to check - one evidence image was cut off mid-way through the book's
+    measured offset from its column centre.
+    """
     out = bgr.copy()
     x, y = origin
 
-    for i, line in enumerate(lines):
+    wrapped = []
+    for line in lines:
+        wrapped.extend(wrap_to_width(line, out.shape[1] - x - 6))
+
+    for i, line in enumerate(wrapped):
         pos = (x, y + i * 18)
         cv2.putText(out, line, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                     (0, 0, 0), 3, cv2.LINE_AA)
@@ -469,3 +515,11 @@ def stamp(bgr, lines, origin=(8, 18)):
                     (255, 255, 255), 1, cv2.LINE_AA)
 
     return out
+
+
+def stamp_height(bgr, lines, origin=(8, 18)):
+    """How tall the caption block from :func:`stamp` will be, in pixels."""
+    rows = 0
+    for line in lines:
+        rows += len(wrap_to_width(line, bgr.shape[1] - origin[0] - 6))
+    return origin[1] + rows * 18

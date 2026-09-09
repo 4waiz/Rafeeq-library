@@ -1,0 +1,144 @@
+{
+  "delivery": {
+    "colour_matches": null,
+    "contact_time_s": null,
+    "delivered": false,
+    "model": null
+  },
+  "detected": {
+    "bin_point_world": null,
+    "book_offset_from_column_centre": -0.1529,
+    "book_offset_measured_against": "plate re-read from the book-scan pose",
+    "book_point_world": [
+      2.6156778547465014,
+      -1.5579313678286812,
+      1.5419719739925772
+    ],
+    "book_row": 1,
+    "column_point_world": [
+      2.5737190737362243,
+      -1.4112504363527487,
+      2.254237758263651
+    ],
+    "physical_column_slot": 4
+  },
+  "evidence": {
+    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260909_223806_742.png"
+  },
+  "failure_reason": "never located a yellow book in column 4 (last perception status: \"book:searching:saw=['green', 'red']\")",
+  "grasp": {
+    "attempts": 2,
+    "held_width": 0.0,
+    "plan": {
+      "grasp": "2.1152,-1.5572,0.0000",
+      "ik_error": "0.0016",
+      "retreat": "1.6952,-1.5572,0.0000",
+      "roll": "+y",
+      "spine_offset": "-0.054",
+      "stage": "1.2852,-1.5572,0.0000"
+    }
+  },
+  "outcome": "failed",
+  "requested": {
+    "book_colour": "yellow",
+    "shelf_column_number": 1
+  },
+  "run_id": "T03_seed303_col1_yellow",
+  "score": {
+    "collisions": {
+      "cooldown_seconds": 1.0,
+      "count": 1,
+      "events": [
+        {
+          "link": "tiago_pro::arm_left_6_link::arm_left_6_link_collision",
+          "object": "erc_table",
+          "state": "FACE_SHELF",
+          "time": 38.832
+        }
+      ],
+      "penalty": 0.5,
+      "penalty_per_event": 0.5
+    },
+    "disclaimer": "Local estimate. Gentle-vs-drop classification and collision intent are judge decisions; see docs for the rule used here.",
+    "gross": 6.0,
+    "maximum_drop": 17.0,
+    "maximum_gentle": 19.0,
+    "notes": [],
+    "placement": {
+      "available_drop": 2.0,
+      "available_gentle": 4.0,
+      "kind": null,
+      "points": 0.0,
+      "reason": ""
+    },
+    "placement_total": 0.0,
+    "stage_total": 6.0,
+    "stages": {
+      "column_image": {
+        "available": 2.0,
+        "awarded": true,
+        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260909_223806_742.png",
+        "points": 2.0
+      },
+      "column_topic": {
+        "available": 1.0,
+        "awarded": true,
+        "evidence": "published 1 on /erc/shelf_column_identification after the marker was read",
+        "points": 1.0
+      },
+      "grasp": {
+        "available": 3.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "navigate_shelf": {
+        "available": 3.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "return_with_book": {
+        "available": 3.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "row_image": {
+        "available": 2.0,
+        "awarded": true,
+        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260909_223841_255.png",
+        "points": 2.0
+      },
+      "row_topic": {
+        "available": 1.0,
+        "awarded": true,
+        "evidence": "published row 1 on /erc/shelf_row_identification",
+        "points": 1.0
+      }
+    },
+    "total_estimate": 5.5
+  },
+  "timing": {
+    "simulated_seconds_total": 373.41,
+    "stage_seconds": {
+      "ARM_PREGRASP": 14.4,
+      "BOOK_POSE": 12.6,
+      "CLOSE_GRASP": 7.6,
+      "COLUMN_REF": 1.4,
+      "COLUMN_REF_POSE": 7.6,
+      "DETECT_BOOK": 21.0,
+      "DETECT_COLUMN": 2.0,
+      "FACE_SHELF": 4.4,
+      "HOME": 21.2,
+      "NAV_COLUMN": 9.8,
+      "NAV_GRASP": 15.6,
+      "NAV_STAGE": 11.4,
+      "PLAN_GRASP": 146.8,
+      "RECOVER": 12.4,
+      "REFINE": 2.8,
+      "SCAN_POSE": 4.2,
+      "WAIT_READY": 1.01
+    }
+  }
+}

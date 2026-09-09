@@ -13,8 +13,9 @@ __pycache__/
 # Only the scratch captures from ad-hoc debugging are ignored.
 erc_images/scratch/
 
-# Trial logs are large; the machine-readable records are kept.
-results/*.log
+# Trial logs are kept: they are about 20 KB each and they are the fullest
+# evidence of what a run actually did, alongside the machine-readable records.
+# Terminal colour codes are stripped before committing so they read as text.
 
 # Editor / OS
 .vscode/

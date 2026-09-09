@@ -1,15 +1,16 @@
 # Handover
 
-Commit `2d9c99e` on `main`, on top of the unmodified organiser baseline
-`2aa5a4a` (`v1.0.3-1-g2aa5a4a`). Nothing has been pushed.
+`main`, on top of the unmodified organiser baseline `2aa5a4a`
+(`v1.0.3-1-g2aa5a4a`). **Nothing has been pushed.**
 
 ## What changed
 
-The previous version reported success it had not achieved. Sixteen mission
-states treated a timeout as completion — including the final one, which logged
-`MISSION COMPLETE — book delivered to the collection bin` on runs where nothing
-had happened. The measured book position was published and consumed by nobody.
-Both are fixed, along with the geometry that made the grasp impossible.
+The version this started from reported success it had not achieved. Sixteen
+mission states treated a timeout as completion — including the final one, which
+logged `MISSION COMPLETE — book delivered to the collection bin` on runs where
+nothing had happened. The measured book position was published and consumed by
+nobody. Both are fixed, along with the geometry that made the grasp impossible
+and the perception that was identifying the wrong book.
 
 Every non-obvious number was measured from the running simulator, not assumed.
 The measurements are in [`measured_environment.md`](measured_environment.md)
@@ -19,26 +20,35 @@ and reproducible with [`tools/diagnostics/`](../tools/diagnostics/).
 
 | | Result |
 |---|---|
-| Offline tests | 70 pytest + 23 vision, all passing, no ROS or Gazebo needed |
-| Live trials | **3 recorded** with machine-readable records in [`results/`](../results/); 2 more ran but exceeded the harness cap before a terminal state and wrote nothing |
+| Offline tests | **109 pytest + 23 vision**, all passing, no ROS or Gazebo needed |
+| Static analysis | pyflakes clean, enforced by `test_lint.py` |
+| Live trials | **5 recorded**, machine-readable, in [`results/`](../results/) |
 | Judges' launch commands | Run unmodified for every trial |
-| Fresh clone | **Not completed.** `git clone` and `git archive` of this repo from the Windows filesystem into WSL both stalled — the tree vendors ~5 GB of PAL and organiser packages. What *was* verified directly against the commit: every text blob is LF, `tools/erc.sh` and the `docker/*.sh` scripts carry the executable bit, and all required files are present. The offline tests pass against the synced copy of the committed content, but **`colcon build` from a genuinely fresh `git clone` has not been run.** |
+| Fresh clone | **Not completed.** Cloning this tree out of the Windows filesystem into WSL stalls on the ~5 GB of vendored packages. Verified directly against the commit instead: every text blob is LF, the shell scripts carry the executable bit, all required files present, offline tests pass against the committed content. A real `colcon build` from a fresh clone still needs running on a Linux host. |
 | Real-time factor | 0.362 measured — sim seconds are ~2.8× wall seconds here |
 
-Measured rates over the 3 recorded trials:
+Measured over the five recorded trials — five different layout seeds, five
+different columns, all four colours:
 
 | Stage | Rate |
 |---|---|
-| Target column identified, published, evidence image | **3/3** |
-| Book row + measured 3D position + evidence image | **1/3** |
-| Reached the shelf and closed on the book | 1/1 attempted |
-| Book retained | **0** |
-| Delivered | **0** |
-| Mean estimated score | **1.5 / 19** |
+| Target column identified, published, evidence image | **5/5** |
+| Book row identified, published, evidence image | **5/5** |
+| Book's measured offset from its column centre | mean **0.157 m**, max **0.264 m** (organiser jitter is ±0.25 m) |
+| Reached the shelf and closed on the book | 5/5 attempted |
+| Book retained | **0/5** |
+| Delivered | **0/5** |
+| Mean estimated score | **5.5 / 19** |
 
-## The two things that do not work
+Two of those figures are worth reading twice. Identification used to be 1 in 3;
+it is now 5 in 5, and the offsets say the *right* book is being found rather
+than merely a book — a book from a neighbouring column would be about 1 m out,
+not 0.16 m. Spot-checked against Gazebo ground truth on the case that used to
+fail worst (seed 404): the recorded offset was −0.264 m against a true −0.246 m.
 
-**1. Grasp retention.** The gripper reaches the correct book, closes on it, and
+## The one thing that does not work
+
+**Grasp retention.** The gripper reaches the correct book, closes on it, and
 the simulator reports sustained fingertip contact — then the book is not
 retained through a 0.020 m lift or a 0.42 m base retreat. Two properties of the
 provided environment look responsible, both documented with evidence in
@@ -55,18 +65,31 @@ provided environment look responsible, both documented with evidence in
 Increasing the squeeze from 6 mm to 16 mm of interference changed nothing.
 **This is the first thing to raise with the organisers**, with the reproducer.
 
-**2. Book identification, 1 of 3.** The column is found reliably; finding the
-target *colour* among the books visible from the scan pose is not. Two of the
-three failures were the target colour simply not being detected in the frame.
-This is a solvable perception problem and is the second priority.
+Downstream of it, the five trials failed in two ways, both consequences:
+three closed on the book and came up empty; two lost the book to the shelf
+after a failed attempt disturbed it, and honestly reported that they could no
+longer see it rather than driving at a position it had left.
+
+## How the wrong-book problem was solved, because it will come back
+
+Odometry drifts 0.29 m and 0.18 rad over a single traverse. Any test of a
+measurement against a position the robot *believes* — a nominal column centre,
+the middle of the frame — inherits that error, and at book range it is most of
+a column. The system was confidently and repeatably identifying a red book one
+column over.
+
+The fix is to compare only things measured from the same pose. The marker plate
+is re-read from the book-scan pose itself, so plate and books carry the
+identical pose error and the difference between them carries none of it. A book
+belongs to this column when its own measured `y` is within the jitter band of
+that plate. Full write-up, with the measurements, in
+[`odometry_drift.md`](odometry_drift.md).
+
+If you add any check against an absolute world coordinate, it will fail
+intermittently and the failure will look like a perception bug.
 
 ## Things worth knowing before touching this
 
-* **Odometry drifts far more than you would expect.** Measured against ground
-  truth: 0.29 m and 0.18 rad after one traverse. Several checks are deliberately
-  robot-relative because of it — see [`odometry_drift.md`](odometry_drift.md).
-  If you add a check against an absolute world coordinate, it will fail
-  intermittently and the failure will look like a perception bug.
 * **Two simulators on one `ROS_DOMAIN_ID` serve the same topics from different
   worlds.** Several hours were lost to this before it was spotted. `tools/`
   scripts now refuse to launch if a previous instance survived.
@@ -75,19 +98,22 @@ This is a solvable perception problem and is the second priority.
   long enough for it to have caught up, and drops frames otherwise.
 * **A stall is not evidence of a grasp here** — see above. Grasp verification
   reads the contact sensors.
+* **Wall-clock and simulated time are not interchangeable** at RTF 0.362. A
+  timeout written in wall seconds fires before a trajectory written in sim
+  seconds can finish.
 
 ## Outstanding, and who owns it
 
 | Item | Owner |
 |---|---|
-| Confirm the Phase 1 deadline **and timezone** — the RIT page says 1 Aug 2026, the v1.0 PDF says 15 Sep 2026, and today is 9 Sep | you |
+| Confirm the Phase 1 deadline **and timezone** — the RIT page says 1 Aug 2026, the v1.0 PDF says 15 Sep 2026 | you |
 | Save the logo to `docs/assets/rafeeq_logo.png` (referenced by README and report title page) | you |
 | Decide whether to submit with the grasp unresolved, or raise it with the organisers first | you |
 | Record the demonstration video — impossible until a run succeeds | you |
 | Approve any push, tag or release | you |
-| Grasp retention | open |
-| Book detection reliability | open |
-| Two more trial records to reach five | open |
+| Grasp retention | open — blocker |
+| The tucked left arm brushes the table while the base turns to face the shelf: −0.5 on **every** trial, 5 for 5, always the same contact | open — cheap to fix, worth 2.5 points across five runs |
+| Fresh-clone `colcon build` on a Linux host | open |
 
 ## Release safety
 
@@ -102,7 +128,7 @@ This is a solvable perception problem and is the second priority.
 ## Rebuilding anything
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q          # 70 offline tests
+python3 -m pytest src/rafeeq_solution/test -q          # 109 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py
 python3 report/build_report.py --preview               # PDF + page PNGs
 ```

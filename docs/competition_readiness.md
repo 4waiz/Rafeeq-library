@@ -91,10 +91,10 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 | `docs/measured_environment.md` | **verified** |
 | `docs/competition_readiness.md` (this file) | **verified** |
 | `docs/grasp_blocker.md` | **verified** |
-| Offline test suite (70 pytest + 23 vision) | **verified** |
-| Documented trials with machine-readable records | **3 recorded** in `results/`; 2 more were run but exceeded the harness's per-trial cap before reaching a terminal state and wrote no record. **Short of the 5 the brief asks for.** |
+| Offline test suite (109 pytest + 23 vision, pyflakes clean) | **verified** |
+| Documented trials with machine-readable records | **5 recorded** in `results/` — five layout seeds, five columns, all four colours. Column and row identified, published and photographed on all five. |
 | Root `README.md` rewrite | **verified** |
-| `report/Rafeeq_ERC2026_Phase1_Report.pdf` | **verified** — 5 body pages + title, 0.16 MB, every figure read from `results/` at build time |
+| `report/Rafeeq_ERC2026_Phase1_Report.pdf` | **verified** — 5 body pages + title, 0.09 MB, every figure read from `results/` at build time |
 | `docs/odometry_drift.md` | **verified** |
 | Demonstration video | **missing** — requires a successful run; see `grasp_blocker.md` |
 | `v1.0.0` release against the validated commit | not yet prepared |
@@ -105,18 +105,23 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 1. **The grasp does not retain the book.** Everything downstream of it — the
    grasp points, both navigation awards, and the placement points — is
    therefore unearned. Characterised in [`grasp_blocker.md`](grasp_blocker.md).
-2. **A left-arm collision at start-up.** The tucked left arm brushes the table
-   while the base turns to face the shelf, costing −0.5. Reproducible; the tuck
-   pose needs re-selecting with the table in the clearance model.
+2. **A left-arm collision at start-up.** The tucked left arm brushes the
+   table while the base turns to face the shelf, costing −0.5. It is the
+   *only* collision in the five recorded trials, and it happens on every one
+   of them — 2.5 points across the set. The tuck pose needs re-selecting
+   with the table in the clearance model.
 3. **The demonstration video cannot honestly be produced yet**, because there
    is no successful run to record.
 4. Bin detection and delivery verification are implemented and unit-tested but
    have never executed live, because no run has got that far.
-5. **Book identification is layout-dependent.** In 2 of the 3 recorded trials
-   the target colour was not detected among the books visible from the scan
-   pose, and the run ended before the arm was used. The measured trials give
-   3/3 for column identification but only 1/3 for the book. This is the second
-   priority after the grasp.
+5. ~~**Book identification is layout-dependent.**~~ **Resolved.** It was worse than layout-dependence: the filter was picking a same-colour book
+   from a neighbouring column, confidently and repeatably, because it
+   compared measurements against positions the robot only believed. Now
+   5/5 across five seeds, with the measured offset from the column centre
+   averaging 0.157 m against an organiser jitter of ±0.25 m — a
+   neighbouring column would be about 1 m out. Ground-truth spot check on
+   the worst previous case: −0.264 m recorded against −0.246 m true.
+   See [`odometry_drift.md`](odometry_drift.md).
 6. **Wheel odometry drifts far enough to matter** — 0.29 m and 0.18 rad over a
    single traverse, measured against ground truth. Several checks were made
    robot-relative because of it (see `odometry_drift.md`), but the coarse

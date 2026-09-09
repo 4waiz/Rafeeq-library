@@ -518,3 +518,18 @@ def test_a_failed_re_look_does_not_un_measure_the_book():
     node.book_point = None                   # the re-look found nothing
     got = node._record('failed')['detected']['book_point_world']
     assert got == (2.9, -0.6, 1.58)
+
+
+def test_a_failed_re_look_does_not_erase_the_evidence_image():
+    """Two records named no book image while the scored file sat on disk."""
+    node = make()
+    node.state = 'DETECT_BOOK'
+    node.entered = node._clock.now()
+    node.book_point = (2.9, -0.6, 1.58)
+    node.on_perception(Msg(data='book:done:1:/tmp/target_book_1.png'))
+    node.tick()
+    assert 'row_image' in node.score.awarded
+
+    node.enter_detect_book()                 # re-observe after a failed grasp
+    assert node.evidence.get('book_image') == '/tmp/target_book_1.png'
+    assert node._record('failed')['evidence']['book_image']

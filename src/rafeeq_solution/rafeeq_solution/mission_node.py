@@ -505,7 +505,8 @@ class MissionNode(Node):
 
     def enter_detect_column(self):
         self.column_point = None
-        self.evidence.pop('column_image', None)
+        if 'column_image' not in self.score.awarded:
+            self.evidence.pop('column_image', None)
         self.set_mode('column')
 
     #: How long to let the evidence path catch up with the slot number.
@@ -634,7 +635,13 @@ class MissionNode(Node):
 
     def enter_detect_book(self):
         self.book_point = None
-        self.evidence.pop('book_image', None)
+        # Clear the image pointer only while the points for it are still
+        # unclaimed.  Once awarded, the file is what the judges look at and the
+        # trial record has to keep naming it: two records came out with no book
+        # image at all because a re-observation after a failed grasp cleared a
+        # pointer to a file that was sitting on disk and already scored.
+        if 'row_image' not in self.score.awarded:
+            self.evidence.pop('book_image', None)
         self.set_mode('book')
 
     def check_detect_book(self):

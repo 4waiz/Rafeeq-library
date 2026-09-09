@@ -26,23 +26,31 @@ entry towards that.
 Honesty first, because it is the point of the whole exercise. Verified on the
 live simulator, with evidence in this repository:
 
-Rates are over the 3 recorded trials in [`results/`](results/).
+Rates are over the 5 recorded trials in [`results/`](results/) — five layout
+seeds, five different columns, all four colours.
 
 | | Stage | Status |
 |---|---|---|
-| ✅ | Read the shelf number plates and identify the target **column** | **3/3** |
-| ✅ | Publish `/erc/shelf_column_identification` **after** identification | 3/3 |
-| ✅ | Annotated image with a box around the **column** | 3/3 |
-| ✅ | Drive to the identified column | 3/3 |
-| ⚠️ | Identify the target book's **row** and publish it | **1/3** |
-| ⚠️ | **Measure the book's 3D position** and use it to aim | **1/3** |
-| ⚠️ | Annotated image of the book with its row and measured offset | 1/3 |
-| ✅ | Stage, plan and reach into the shelf with **zero shelf collisions** | 1/1 attempted |
-| ✅ | Close the gripper on the book, with registered contact | 1/1 attempted |
+| ✅ | Read the shelf number plates and identify the target **column** | **5/5** |
+| ✅ | Publish `/erc/shelf_column_identification` **after** identification | 5/5 |
+| ✅ | Annotated image with a box around the **column** | 5/5 |
+| ✅ | Drive to the identified column | 5/5 |
+| ✅ | Identify the target book's **row** and publish it | **5/5** |
+| ✅ | **Measure the book's 3D position** and use it to aim | **5/5** |
+| ✅ | Annotated image of the book with its row and measured offset | 5/5 |
+| ✅ | Stage, plan and reach into the shelf with **zero shelf collisions** | 5/5 attempted |
+| ✅ | Close the gripper on the book, with registered contact | 5/5 attempted |
 | ❌ | **Retain** the book through a lift or a retreat | **blocked** |
 | ⏳ | Carry back, identify the bin, place, verify delivery | implemented, never reached live |
 
-**Two things are honestly not working.**
+The identification rates are worth a sentence, because "5/5" on its own could
+mean the robot found *a* book. Across the five trials the measured offset of
+the chosen book from its column centre averaged **0.157 m**, largest 0.264 m,
+against an organiser jitter of ±0.25 m. A book from a neighbouring column would
+be about a metre out. Spot-checked against Gazebo ground truth on the case that
+used to fail worst: −0.264 m recorded against −0.246 m true.
+
+**One thing is honestly not working, and one is costing points.**
 
 1. **The grasp does not hold.** The gripper reaches the right book, closes on
    it and registers contact, but the book is not retained. Characterised in
@@ -50,11 +58,11 @@ Rates are over the 3 recorded trials in [`results/`](results/).
    Everything gated on it — the grasp points, both navigation awards and the
    placement points — is **not earned**, and this repository does not claim
    them.
-2. **Book identification is layout-dependent**: 1 of 3 recorded trials. The
-   column is found reliably; finding the target *colour* among the books
-   visible from the scan pose is not yet reliable.
+2. **The tucked left arm brushes the table** as the base turns to face the
+   shelf. It is the only collision in the five trials and it occurs in all of
+   them: −0.5 each, 2.5 across the set.
 
-Mean estimated score across the recorded trials: **1.5 / 19**.
+Mean estimated score across the recorded trials: **5.5 / 19**.
 
 What that leaves is a working perception-to-motion pipeline and a mission that
 **reports failure honestly instead of manufacturing success**. An earlier
@@ -236,7 +244,7 @@ ERC_SEED=101 ros2 launch erc_bringup simulation.launch.py
 ### Testing
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q        # 70 offline tests
+python3 -m pytest src/rafeeq_solution/test -q        # 109 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py   # 23 vision tests
 ```
 

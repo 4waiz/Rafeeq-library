@@ -731,8 +731,8 @@ class PerceptionNode(Node):
                 self.target_colour, row, method),
              'measured world ({:+.3f}, {:+.3f}, {:.3f}) m'.format(*world),
              'column chosen by {}'.format(how),
-             'offset from column centre {:+.3f} m vs {} ({} book(s) in '
-             'column)'.format(offset, against, len(in_column))])
+             'offset from column centre {:+.3f} m, against the {}'
+             .format(offset, against)])
 
         self.get_logger().info(
             'BOOK CONFIRMED: {} book in row {} ({}), measured at world '
@@ -871,9 +871,11 @@ class PerceptionNode(Node):
         name = '{}_{}.png'.format(kind, stamp_text)
         path = os.path.join(self.image_dir, name)
 
-        annotated = vision.annotate_many(bgr, detections, label_fns)
-        annotated = vision.stamp(
-            annotated, ['Rafeeq / Team Kanban  ' + stamp_text] + list(lines))
+        caption = ['Rafeeq / Team Kanban  ' + stamp_text] + list(lines)
+        annotated = vision.annotate_many(
+            bgr, detections, label_fns,
+            avoid_top=vision.stamp_height(bgr, caption))
+        annotated = vision.stamp(annotated, caption)
 
         try:
             if not cv2.imwrite(path, annotated):
