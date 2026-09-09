@@ -476,3 +476,45 @@ def test_bin_detection_failure_does_not_fall_back_to_a_nominal_pose():
     assert node.state == 'FAILED', (
         'a failed visual identification silently used a hard-coded bin pose')
     assert node.bin_point is None
+
+
+def _point(x, y, z):
+    msg = PointStamped()
+    msg.point.x, msg.point.y, msg.point.z = x, y, z
+    return msg
+
+
+def test_the_record_states_the_offset_against_the_plate_it_read():
+    """The nominal comparison reports drift, not offset.
+
+    A book really 0.25 m off its column centre was recorded at -0.703 m,
+    because the nominal centre is not where the robot thinks it is.  The
+    report headlines this number as "mean offset of book from column centre",
+    where 0.70 m would read as having grabbed the wrong column's book.
+    """
+    node = make()
+    node.state = 'DETECT_BOOK'
+    node.column_slot = 2                     # nominal centre y = +1.00
+    node.on_perception(Msg(data='column_ref:done:0.552'))
+    node.on_target_point(_point(3.0, 0.298, 1.25))
+
+    record = node._record('failed')
+    assert record['detected']['book_offset_from_column_centre'] == pytest.approx(
+        -0.254, abs=1e-3), 'offset measured against the nominal centre again'
+    assert 'plate' in record['detected']['book_offset_measured_against']
+
+
+def test_a_failed_re_look_does_not_un_measure_the_book():
+    """T01 of the final batch recorded no book position at all.
+
+    The book was measured, published and photographed; a later look after two
+    failed grasps could not find it again - by then the arm had knocked it out
+    of the shelf - and the record came out empty, understating what the run
+    had actually achieved.
+    """
+    node = make()
+    node.state = 'DETECT_BOOK'
+    node.on_target_point(_point(2.9, -0.6, 1.58))
+    node.book_point = None                   # the re-look found nothing
+    got = node._record('failed')['detected']['book_point_world']
+    assert got == (2.9, -0.6, 1.58)

@@ -167,6 +167,12 @@ class MissionNode(Node):
         #: When the column slot first arrived, so the evidence path that
         #: follows it on a different topic gets a moment to catch up.
         self._slot_seen_at = None
+        #: Measured y of the target plate, as reported by perception.
+        self.column_ref_y = None
+        #: The best book measurement of the run, kept even if a later look
+        #: fails - a re-observation that comes up empty does not un-measure
+        #: what was already measured and published.
+        self.book_point_best = None
 
         self.invalid = self._validate_inputs()
 
@@ -250,6 +256,14 @@ class MissionNode(Node):
             self.column_slot = int(parts[2])
             if len(parts) > 3 and parts[3]:
                 self.evidence['column_image'] = ':'.join(parts[3:])
+        elif msg.data.startswith('column_ref:done:'):
+            # The reference the book filter used.  Kept so the trial record can
+            # state the book's offset against the plate that was actually read
+            # rather than against a nominal centre the robot never measured.
+            try:
+                self.column_ref_y = float(parts[2])
+            except (IndexError, ValueError):
+                pass
         elif msg.data.startswith('book:done:'):
             self.book_row = int(parts[2])
             if len(parts) > 3 and parts[3]:
@@ -264,6 +278,7 @@ class MissionNode(Node):
             self.column_point = point
         elif self.state in ('DETECT_BOOK',):
             self.book_point = point
+            self.book_point_best = point
         elif self.state in ('DETECT_BIN',):
             self.bin_point = point
 
@@ -290,6 +305,22 @@ class MissionNode(Node):
             self.transition('WAIT_READY')
 
     # -- plumbing --------------------------------------------------------
+
+    def _book_offset(self):
+        """How far the book sits off its column centre, in metres.
+
+        Measured against the plate re-read from the book-scan pose, not the
+        nominal centre.  Both the book and the plate carry the same odometry
+        error, so their difference is the real offset; the nominal comparison
+        reports mostly drift, and printed figures like -0.703 m for a book that
+        was really 0.25 m off centre - three times the organiser's jitter, and
+        indistinguishable from having grabbed the wrong column's book.
+        """
+        if self.book_point_best is None:
+            return None
+        reference = (self.column_ref_y if self.column_ref_y is not None
+                     else self.column_y)
+        return round(self.book_point_best[1] - reference, 4)
 
     def now(self):
         return self.get_clock().now().nanoseconds / 1e9
@@ -961,10 +992,13 @@ class MissionNode(Node):
             'detected': {'physical_column_slot': self.column_slot,
                          'column_point_world': self.column_point,
                          'book_row': self.book_row,
-                         'book_point_world': self.book_point,
+                         'book_point_world': self.book_point_best,
                          'book_offset_from_column_centre':
-                             (None if self.book_point is None
-                              else round(self.book_point[1] - self.column_y, 4)),
+                             self._book_offset(),
+                         'book_offset_measured_against':
+                             ('plate re-read from the book-scan pose'
+                              if self.column_ref_y is not None
+                              else 'nominal column centre (no plate reference)'),
                          'bin_point_world': self.bin_point},
             'evidence': dict(self.evidence),
             'grasp': {'attempts': self.grasp_attempts,
