@@ -2,13 +2,19 @@
 
 Evaluation command::
 
-    ros2 launch rafeeq_solution solution.launch.py \
+    ros2 launch rafeeq_solution solution.launch.py \\
         shelf_column_number:=2 book_colour:=red
 
-Brings up the four solution nodes. The simulation itself must already be
-running (``ros2 launch erc_bringup simulation.launch.py``); this launch file
-deliberately does not start it, so the two can be launched separately on
-camera as the rules require.
+Those two arguments are the only ones required.  Everything else has a working
+default, the mission starts itself, and no browser, dashboard or second
+"go" command is involved.
+
+The simulation itself must already be running::
+
+    ros2 launch erc_bringup simulation.launch.py
+
+This launch file deliberately does not start it, so the two can be launched
+separately on camera as the rules require.
 """
 
 import os
@@ -19,6 +25,24 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
+
+
+def _repo_root():
+    """Best guess at the workspace root, for the evidence directory.
+
+    Walks up from this file looking for an ``erc_images`` directory - true of a
+    plain clone and of the mounted container workspace alike.  Falls back to the
+    current working directory.  Nothing here needs write access to ``/``.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(8):
+        here = os.path.dirname(here)
+        if not here or here == os.sep:
+            break
+        if os.path.isdir(os.path.join(here, 'erc_images')):
+            return here
+    return os.getcwd()
 
 
 def generate_launch_description():
@@ -26,15 +50,24 @@ def generate_launch_description():
     colour = LaunchConfiguration('book_colour')
     arm_side = LaunchConfiguration('arm_side')
     image_dir = LaunchConfiguration('image_dir')
+    results_dir = LaunchConfiguration('results_dir')
     row_one_is_top = LaunchConfiguration('row_one_is_top')
     auto_start = LaunchConfiguration('auto_start')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    run_id = LaunchConfiguration('run_id')
 
     arm_poses = os.path.join(
         get_package_share_directory('rafeeq_solution'),
         'config', 'arm_poses.yaml')
 
-    common = {'use_sim_time': use_sim_time}
+    root = _repo_root()
+    common = {'use_sim_time': ParameterValue(use_sim_time, value_type=bool)}
+
+    # The two competition inputs are typed explicitly.  Launch substitutions
+    # arrive as strings, and a node that declared an int parameter would get a
+    # type error on the judges' machine rather than on ours.
+    column_param = ParameterValue(column, value_type=int)
+    colour_param = ParameterValue(colour, value_type=str)
 
     perception = Node(
         package='rafeeq_solution',
@@ -43,10 +76,10 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[common, {
-            'shelf_column_number': column,
-            'book_colour': colour,
-            'image_dir': image_dir,
-            'row_one_is_top': row_one_is_top,
+            'shelf_column_number': column_param,
+            'book_colour': colour_param,
+            'image_dir': ParameterValue(image_dir, value_type=str),
+            'row_one_is_top': ParameterValue(row_one_is_top, value_type=bool),
         }],
     )
 
@@ -66,7 +99,7 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[common, {
-            'arm_side': arm_side,
+            'arm_side': ParameterValue(arm_side, value_type=str),
             'config_file': arm_poses,
         }],
     )
@@ -78,41 +111,53 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[common, {
-            'shelf_column_number': column,
-            'book_colour': colour,
-            'auto_start': auto_start,
+            'shelf_column_number': column_param,
+            'book_colour': colour_param,
+            'auto_start': ParameterValue(auto_start, value_type=bool),
+            'results_dir': ParameterValue(results_dir, value_type=str),
+            'run_id': ParameterValue(run_id, value_type=str),
         }],
     )
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'shelf_column_number',
-            description='Shelf column number to retrieve from, 1-5.'),
+            description='Shelf column number to retrieve from: 1-5. '
+                        'Required.'),
         DeclareLaunchArgument(
             'book_colour',
-            description='Target book colour: red, green, blue or yellow.'),
+            description='Target book colour: red, green, blue or yellow. '
+                        'Required.'),
         DeclareLaunchArgument(
             'arm_side', default_value='right',
-            description='Which arm to grasp with: left or right.'),
+            description='Which single arm grasps with: left or right. The '
+                        'other arm is tucked out of the way.'),
         DeclareLaunchArgument(
-            'image_dir', default_value='/opt/erc_ws/src/erc_images',
-            description='Where annotated images are written. This path is '
-                        'inside the mounted workspace so the files survive '
-                        'the container; /erc_images is symlinked to it.'),
+            'image_dir', default_value=os.path.join(root, 'erc_images'),
+            description='Where annotated evidence images are written. '
+                        'Defaults to the erc_images directory of this '
+                        'workspace.'),
+        DeclareLaunchArgument(
+            'results_dir', default_value=os.path.join(root, 'results'),
+            description='Where the machine-readable trial record is written.'),
         DeclareLaunchArgument(
             'row_one_is_top', default_value='true',
             description='True if shelf row 1 is the topmost book row.'),
         DeclareLaunchArgument(
             'auto_start', default_value='true',
-            description='Start the mission immediately. Set false to arm it '
-                        'and trigger with /rafeeq/mission/start.'),
+            description='Start the mission as soon as the robot is ready. '
+                        'Set false to arm it and trigger with '
+                        '/rafeeq/mission/start.'),
         DeclareLaunchArgument(
             'use_sim_time', default_value='true',
             description='Follow the Gazebo clock. Leave true.'),
+        DeclareLaunchArgument(
+            'run_id', default_value='',
+            description='Identifier for the trial record. Generated if empty.'),
 
-        LogInfo(msg=['[rafeeq] target column ', column,
-                     ', book colour ', colour,
-                     ', grasping with the ', arm_side, ' arm']),
+        LogInfo(msg=['[rafeeq] Team Kanban | target column ', column,
+                     ', ', colour, ' book | grasping with the ', arm_side,
+                     ' arm | evidence -> ', image_dir]),
 
         perception,
         navigation,

@@ -2,9 +2,9 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>rafeeq_solution</name>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
   <description>Rafeeq Library Robot — ERC 2026 Phase 1 autonomous book retrieval solution.</description>
-  <maintainer email="bridgesoftwareteam@gmail.com">Rafeeq Team</maintainer>
+  <maintainer email="bridgesoftwareteam@gmail.com">Team Kanban</maintainer>
   <license>Apache-2.0</license>
 
   <exec_depend>rclpy</exec_depend>
@@ -13,6 +13,14 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>ros_gz_interfaces</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>tf2_geometry_msgs</exec_depend>
   <exec_depend>launch</exec_depend>

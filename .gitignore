@@ -8,8 +8,13 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Runtime detection images (keep the directory, not the captures)
-erc_images/*.png
+# Runtime detection images. These are REQUIRED EVIDENCE, so they are kept -
+# the previous rule excluded exactly what the rulebook asks to be submitted.
+# Only the scratch captures from ad-hoc debugging are ignored.
+erc_images/scratch/
+
+# Trial logs are large; the machine-readable records are kept.
+results/*.log
 
 # Editor / OS
 .vscode/

@@ -126,11 +126,23 @@ class PinholeModel:
         return (x, y, float(depth))
 
 
+def patch_half_for_bbox(bbox, cap=4, floor=1):
+    """Half-width of a depth patch guaranteed to fit inside ``bbox``."""
+    _, _, w, h = bbox
+    return int(max(floor, min(cap, min(int(w), int(h)) // 3)))
+
+
 def patch_depth(depth_m, u, v, half=4):
     """Median depth over a small patch, ignoring NaNs.
 
-    A single pixel on a book spine 3 m away is a coin flip; a 9x9 median is
-    stable and still small enough to stay on the object.
+    A single pixel is a coin flip, so a median over a patch is used instead -
+    but the patch has to **fit inside the object**. A book spine is 0.03 m
+    wide, which is about 7 px at the 1.5 m scan range, so the default 9x9
+    window straddles it and medians in the shelf behind. That inflates the
+    range, and because the lateral deprojection scales with range it threw
+    measured book positions out by ~0.5 m - half a column pitch, enough to
+    place every book in the wrong column. Callers that know the detection's
+    size should pass a matching ``half``; see :func:`patch_half_for_bbox`.
     """
     h, w = depth_m.shape[:2]
     u0, u1 = max(0, int(u) - half), min(w, int(u) + half + 1)

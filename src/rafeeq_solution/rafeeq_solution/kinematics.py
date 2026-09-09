@@ -95,6 +95,8 @@ class Chain:
                          and limit.get('lower') is not None else -math.pi,
                 'upper': float(limit.get('upper')) if limit is not None
                          and limit.get('upper') is not None else math.pi,
+                'velocity': float(limit.get('velocity')) if limit is not None
+                            and limit.get('velocity') is not None else 1.0,
             }
             self.child_of[child] = name
 
@@ -142,6 +144,35 @@ class Chain:
                 i += 1
 
         return T
+
+    def link_frames(self, q):
+        """Pose of every link along the chain, as ``[(link_name, T), ...]``.
+
+        ``fk`` only returns the tip.  Collision reasoning needs the whole arm:
+        an IK solution can put the gripper exactly where it belongs while
+        driving the elbow through a shelf, which is precisely what happened
+        before this existed (``arm_right_5_link`` logged 5363 contacts with
+        ``erc_shelf`` on an otherwise perfect pre-grasp solve).
+        """
+        T = np.eye(4)
+        frames = []
+        i = 0
+
+        for seg in self.segments:
+            T = T @ seg['origin']
+            if seg['type'] in ('revolute', 'continuous'):
+                R = np.eye(4)
+                R[:3, :3] = axis_rotation(seg['axis'], q[i])
+                T = T @ R
+                i += 1
+            elif seg['type'] == 'prismatic':
+                D = np.eye(4)
+                D[:3, 3] = np.asarray(seg['axis'], float) * q[i]
+                T = T @ D
+                i += 1
+            frames.append((seg['child'], T.copy()))
+
+        return frames
 
     def clamp(self, q):
         return np.clip(q, self.lower, self.upper)
@@ -374,6 +405,29 @@ class Chain:
                 break
 
         return best_q, best_info
+
+
+def joint_velocity_limits(urdf_path):
+    """Map every named joint in a URDF to its velocity limit.
+
+    Trajectories are time-parameterised against these rather than against one
+    guessed speed.  It matters: ``torso_lift_joint`` is limited to 0.035 m/s
+    while the arm joints run at ~1.95 rad/s, so a trajectory timed at arm speed
+    asks the torso for something physically impossible.  The controller then
+    finishes the trajectory with the torso still 0.15 m short, which used to
+    look like a mysterious manipulation failure.
+    """
+    tree = ET.parse(urdf_path)
+    limits = {}
+    for joint in tree.getroot().findall('joint'):
+        limit = joint.find('limit')
+        if limit is None or limit.get('velocity') is None:
+            continue
+        try:
+            limits[joint.get('name')] = float(limit.get('velocity'))
+        except (TypeError, ValueError):
+            continue
+    return limits
 
 
 def right_arm_chain(urdf_path):

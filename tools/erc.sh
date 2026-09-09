@@ -4,6 +4,12 @@
 #   ./tools/erc.sh up                     start docker + container
 #   ./tools/erc.sh build                  colcon build the whole workspace
 #   ./tools/erc.sh sim [gui|headless]     launch simulation.launch.py
+#
+#   ERC_SEED=<n> ./tools/erc.sh sim ...   reproducible arena layout.
+#     simulation.launch.py seeds its randomisation from ERC_SEED, so the
+#     same value gives the same digit order, the same colour-to-row
+#     assignment and the same book jitter every time. Fix a seed while
+#     debugging, then sweep seeds to prove generality.
 #   ./tools/erc.sh solution 2 red         launch solution.launch.py
 #   ./tools/erc.sh shell                  open a shell inside the container
 #   ./tools/erc.sh status                 what is running, is the clock moving
@@ -69,9 +75,12 @@ sim)
     [ "$MODE" = "headless" ] && HL=true || HL=false
     echo "[erc] stopping any previous sim"
     $DC exec -T erc bash -c 'pkill -f "gz sim" || true; pkill -f "ros2 launch" || true; pkill -f parameter_bridge || true; sleep 3' || true
+    if [ -n "${ERC_SEED:-}" ]; then
+        echo "[erc] ERC_SEED=$ERC_SEED (reproducible layout)"
+    fi
     echo "[erc] launching simulation.launch.py headless:=$HL"
     $DC exec -d erc /entrypoint.sh bash -c \
-        "$SRC && exec ros2 launch erc_bringup simulation.launch.py headless:=$HL > /tmp/sim.log 2>&1"
+        "$SRC && ${ERC_SEED:+export ERC_SEED=$ERC_SEED;} exec ros2 launch erc_bringup simulation.launch.py headless:=$HL > /tmp/sim.log 2>&1"
     echo "[erc] give it ~45 s, then: ./tools/erc.sh status"
     ;;
 

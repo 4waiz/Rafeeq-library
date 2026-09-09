@@ -1,100 +1,100 @@
-# Named joint poses for the Rafeeq manipulation node.
+# Named joint poses and tuning constants for the Rafeeq manipulation node.
 #
-# The reach_row_* and place poses below are SOLVED, not guessed. They come
-# from scripts/solve_arm_poses.py, which runs damped least-squares IK against
-# the competition URDF via rafeeq_solution/kinematics.py. That FK was
-# validated against the running simulator across three arbitrary arm
-# configurations and matched to 0.07 mm.
+# WHAT IS AND IS NOT IN HERE
 #
-# Regenerate them whenever the standoff distances or shelf geometry change:
+# The grasp and placement poses are **not** in this file any more, and that is
+# deliberate.  The organiser jitters every book by up to +/- 0.25 m in world y
+# (`random.uniform(-COLUMN_JITTER_RANGE, +COLUMN_JITTER_RANGE)` in
+# simulation.launch.py), which is three times the gripper's maximum 0.082 m
+# opening.  A fixed `reach_row_N` pose aimed at a column centre therefore
+# misses almost every book, no matter how well it was solved.
 #
-#     python3 scripts/solve_arm_poses.py
+# Grasp and place poses are solved at run time by rafeeq_solution/grasp.py
+# against the measured target from perception, using the damped least-squares
+# IK in kinematics.py on the competition URDF.  A full plan takes well under a
+# second once the seed workspace is warm, which happens during start-up.
 #
-# Solver residuals at the time of writing (position / finger tilt):
-#     reach_row_1  0.41 mm  4.0 deg      reach_row_3  0.61 mm  0.1 deg
-#     reach_row_2  0.99 mm  4.4 deg      reach_row_4  0.39 mm  0.0 deg
-#     place        0.19 mm  0.0 deg
+# What remains here is only what genuinely is fixed: safe driving postures, the
+# head and torso poses used for looking around, and the gripper constants.
 #
-# The few degrees of finger tilt on the top two rows are harmless: the fingers
-# close across a 0.03 m book spine with a 0.069 m opening.
-#
-# ---------------------------- IMPORTANT ----------------------------------
-# IK solves reachability, NOT collision. Nothing here checks the arm against
-# the shelf, the robot's own body, or the neighbouring books, and there is no
-# trajectory planning - the controller interpolates straight to the goal in
-# joint space. If the arm clips the shelf on the way in, nudge the pose with
-#     ros2 run rafeeq_solution tune_arm
-# and paste the result back here.
-#
-# tucked and carry are still hand-chosen safe postures, not solved.
-# -------------------------------------------------------------------------
-#
-# Joint limits, for reference while tuning (radians):
+# Joint limits, for reference (radians unless noted):
 #   arm_right_1  -4.712 .. +0.524      arm_right_5  -1.571 .. +3.665
 #   arm_right_2  -2.443 .. +1.134      arm_right_6  -1.885 .. +3.002
 #   arm_right_3  -2.618 .. +2.618      arm_right_7  -2.443 .. +2.443
 #   arm_right_4  -2.443 .. +1.134
 #   torso_lift    0.000 .. +0.350 m
 #   head_1 (pan) -1.309 .. +1.309      head_2 (tilt) -1.047 .. +0.349
-#   gripper_*_finger_joint  0.000 .. +0.069 m  (clamped by erc_bringup)
+#   gripper_*_finger_joint  0.000 .. +0.069 m  (range enforced by the
+#                           organiser's gripper_command_clamp, which REJECTS
+#                           out-of-range points rather than clipping them)
 
 arm_poses:
-  # Hand-chosen safe postures for driving.
-  tucked:      [-1.50, -1.20,  0.00, -1.40,  0.00,  0.60,  0.00]
-  carry:       [-1.40, -0.90,  0.00, -1.20,  0.00,  0.40,  0.00]
+  # Genuine drive tucks, chosen by searching the sampled workspace for a
+  # configuration that puts the gripper BEHIND the base centre and out on its
+  # own side, then verified by forward kinematics:
+  #
+  #   tucked       right gripper at base-frame (-0.249, -0.285, +0.875)
+  #   tucked_left  left  gripper at base-frame (-0.246, +0.286, +0.759)
+  #
+  # This matters more than it looks.  The previous `tucked` pose left the
+  # gripper at base-frame x = +0.706, and the left arm was never commanded at
+  # all, so it sat at its all-zeros spawn pose with its gripper at x = +0.983.
+  # Parked 0.47 m from the shelf face that puts BOTH grippers inside the
+  # shelf: measured 12 852 gripper_left_fingertip/erc_shelf contacts in a
+  # single move, with the right arm physically blocked 1.2 rad short of its
+  # target.  Tucking both arms before approaching removes that entirely.
+  tucked:      [+0.020, -2.000, +1.738, -1.664, +1.524, -1.638, -0.552]
+  tucked_left: [+0.174, -2.205, -1.216, -1.338, +1.128, +2.851, -1.355]
 
-  # IK-solved. Gripper at the book centre, approach into the shelf along
-  # world +x, fingers horizontal across the 0.03 m spine.
-  reach_row_1: [-0.062, +0.950, -0.517, -1.610, -1.282, +0.683, +1.994]
-  reach_row_2: [-1.579, +0.723, +0.762, -1.672, +0.270, -0.968, -0.436]
-  reach_row_3: [-3.435, -1.100, +2.406, -2.120, -0.819, -1.658, +2.270]
-  reach_row_4: [-0.009, +0.369, -0.882, -2.396, +2.023, +2.115, -1.010]
-
-  # IK-solved. Gripper 0.12 m above the bin rim, approaching straight down.
-  place:       [-3.852, -1.144, -2.255, -0.225, +2.428, +2.443, -0.380]
-
-# Torso height per row, metres. Row 1 needs every millimetre of lift; the
-# bottom row wants the torso all the way down.
-torso_by_row:
-  1: 0.295
-  2: 0.262
-  3: 0.266
-  4: 0.011
-
-# Torso for non-grasping activities.
+# Torso heights for non-grasping activities.  The grasp height is solved, not
+# listed: it comes out of the IK for the measured book row.
 torso_poses:
-  scan_markers: 0.35    # raise the camera so the plates at 2.26 m fit the
-                        # head's limited +0.349 rad upward tilt
-  scan_books:   0.20
-  drive:        0.10
-  place:        0.350   # solved with the place arm pose
+  scan_markers: 0.35    # raise the camera so the plates at 2.26 m fit inside
+                        # the head's limited +0.349 rad upward tilt
+  scan_books:   0.30
+  # Kept high on purpose.  The torso is the slowest joint on the robot
+  # (0.035 m/s), and the marker scan (0.35) and every grasp height (~0.25-0.31)
+  # are all high, so parking it low between them would spend 20-30 s of the
+  # trial travelling up and down for no benefit.
+  drive:        0.30
+  # The bin rim is at a measured 0.950 m.  Dropping the torso a little brings
+  # the camera nearer that height so the bin is not clipped at the frame edge,
+  # which is what threw the old bin estimate out by 0.85 m.
+  scan_bin:     0.22
 
-# Head pan/tilt pairs, radians. Negative tilt looks down.
+# Head pan/tilt pairs, radians.  Negative tilt looks down.
 head_poses:
   scan_markers: [0.00,  0.32]   # near the +0.349 upward limit
-  scan_books:   [0.00, -0.30]
-  # scan_bin was -0.25 and pointed the camera at the floor: the bin sits on a
-  # table at 1.3 m, which is roughly camera height, not below it. The live run
-  # on 2026-08-26 saw only wall and floor with the bin clipped at the right
-  # edge of frame, which threw the deprojected bin position out by 0.85 m.
-  scan_bin:     [0.00, -0.05]
+  # Slightly less downward than before: with the torso at 0.30 the
+  # camera sits at 1.46 m and this keeps all four rows, including
+  # the top one at 1.577 m, comfortably inside the frame.
+  scan_books:   [0.00, -0.26]
+  # The bin rim sits at a MEASURED 0.950 m, not the 1.3 m spawn pose in the
+  # world file - the bin drops onto the table at start-up.  From the start
+  # zone that is a little below camera height, so a small downward tilt.
+  scan_bin:     [0.00, -0.22]
   forward:      [0.00,  0.00]
 
-# Gripper finger positions, metres. The book spine is 0.03 m wide, so the
-# closed value squeezes slightly past contact to load the friction surfaces
-# (mu = 5.0 on the book collision, see erc_book.sdf).
-gripper:
-  open:   0.065
-  closed: 0.021
-  relax:  0.045
-
-# How long each trajectory is given to execute, seconds.
+# Gripper finger positions, metres.  These are joint values, NOT fingertip
+# separations: the measured relationship is
 #
-# torso is 12 s, not 4: torso_lift_joint has a velocity limit of 0.035 m/s in
-# the URDF, so its full 0.35 m of travel physically takes 10 s. A shorter
-# budget makes every torso move report "joints off target".
+#     fingertip gap = 0.0280 + 0.783 * joint
+#
+# so the fingers are 0.0280 m apart at joint 0.0 and 0.0820 m apart at 0.069.
+# A book spine is 0.030 m wide, which means:
+#
+#   * `closed` MUST be 0.0.  The previous value of 0.021 left a 0.0444 m gap
+#     around a 0.030 m book - the fingers never touched it, which is why no
+#     grasp ever held.  At 0.0 the fingers interfere with the spine by 2 mm
+#     and load the friction surfaces (mu = 5.0 on the book collision).
+#   * There is no way to command a gap between 0.020 and 0.028 m; 0.028 m is
+#     the mechanical minimum.
+gripper:
+  open:   0.060
+  closed: 0.000
+
+# Trajectory timing.  Arm, torso and head motions are executed through the
+# controllers' FollowJointTrajectory actions and timed from the joint distance
+# actually being travelled, so only the gripper needs a fixed duration here.
 durations:
-  arm:     4.0
-  torso:   12.0
-  head:    2.0
   gripper: 1.5

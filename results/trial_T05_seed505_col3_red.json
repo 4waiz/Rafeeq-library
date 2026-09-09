@@ -1,0 +1,117 @@
+{
+  "delivery": {
+    "colour_matches": null,
+    "contact_time_s": null,
+    "delivered": false,
+    "model": null
+  },
+  "detected": {
+    "bin_point_world": null,
+    "book_offset_from_column_centre": null,
+    "book_point_world": null,
+    "book_row": null,
+    "column_point_world": null,
+    "physical_column_slot": 3
+  },
+  "evidence": {},
+  "failure_reason": "never located a red book in column 3 (last perception status: \"book:searching:saw=['blue', 'green']\")",
+  "grasp": {
+    "attempts": 0,
+    "held_width": 0.0,
+    "plan": {}
+  },
+  "outcome": "failed",
+  "requested": {
+    "book_colour": "red",
+    "shelf_column_number": 3
+  },
+  "run_id": "T05_seed505_col3_red",
+  "score": {
+    "collisions": {
+      "cooldown_seconds": 1.0,
+      "count": 1,
+      "events": [
+        {
+          "link": "tiago_pro::arm_left_6_link::arm_left_6_link_collision",
+          "object": "erc_table",
+          "state": "FACE_SHELF",
+          "time": 38.632
+        }
+      ],
+      "penalty": 0.5,
+      "penalty_per_event": 0.5
+    },
+    "disclaimer": "Local estimate. Gentle-vs-drop classification and collision intent are judge decisions; see docs for the rule used here.",
+    "gross": 1.0,
+    "maximum_drop": 17.0,
+    "maximum_gentle": 19.0,
+    "notes": [],
+    "placement": {
+      "available_drop": 2.0,
+      "available_gentle": 4.0,
+      "kind": null,
+      "points": 0.0,
+      "reason": ""
+    },
+    "placement_total": 0.0,
+    "stage_total": 1.0,
+    "stages": {
+      "column_image": {
+        "available": 2.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "column_topic": {
+        "available": 1.0,
+        "awarded": true,
+        "evidence": "published 3 on /erc/shelf_column_identification after the marker was read",
+        "points": 1.0
+      },
+      "grasp": {
+        "available": 3.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "navigate_shelf": {
+        "available": 3.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "return_with_book": {
+        "available": 3.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "row_image": {
+        "available": 2.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      },
+      "row_topic": {
+        "available": 1.0,
+        "awarded": false,
+        "evidence": "",
+        "points": 0.0
+      }
+    },
+    "total_estimate": 0.5
+  },
+  "timing": {
+    "simulated_seconds_total": 190.0,
+    "stage_seconds": {
+      "BOOK_POSE": 4.2,
+      "DETECT_BOOK": 18.2,
+      "DETECT_COLUMN": 2.6,
+      "FACE_SHELF": 4.4,
+      "HOME": 21.2,
+      "NAV_COLUMN": 9.4,
+      "SCAN_POSE": 4.2,
+      "WAIT_READY": 16.6
+    }
+  }
+}

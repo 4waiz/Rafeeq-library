@@ -1,0 +1,14 @@
+# Normalise line endings. Without this, a clone made on Windows commits CRLF
+# into the blobs, and on Linux every shell script then fails with
+# "bad interpreter: /bin/bash^M" and the ROS entry points refuse to run.
+# The organiser's environment is Linux, so LF is the only correct answer.
+* text=auto eol=lf
+
+# Binary assets must never be touched.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pdf  binary
+*.stl  binary
+*.dae  binary
+*.mp4  binary

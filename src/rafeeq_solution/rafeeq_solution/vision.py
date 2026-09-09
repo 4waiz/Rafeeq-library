@@ -260,13 +260,20 @@ def rank_rows(books, row_one_is_top=True):
     return ordered
 
 
-def detect_red_bin(bgr, min_area=2500):
+def detect_red_bin(bgr, min_area=2500, min_fill=0.35, max_aspect=4.0):
     """Find the red collection bin.
 
-    Called only when the robot is facing the start zone, so the red books on
-    the shelf are behind it and cannot compete. We additionally require a
-    blob that is not spine-shaped, which rejects a carried red book held in
-    front of the camera.
+    Called only while the robot faces the start zone, so the red books on the
+    shelf are behind it.  Three cues separate the bin from the other red things
+    that can be in frame - a red book on a shelf behind, or the red book in our
+    own gripper:
+
+    * **size**: the bin subtends far more area than a book spine;
+    * **shape**: a spine is a narrow vertical bar, the bin is broad;
+    * **solidity**: the bin's face is a filled rectangle.
+
+    Geometry is checked separately by the caller, which deprojects the blob and
+    requires it to be where the bin can actually be.
     """
     mask = colour_mask(bgr, 'red')
     contours, _ = cv2.findContours(
@@ -276,23 +283,59 @@ def detect_red_bin(bgr, min_area=2500):
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         area = cv2.contourArea(contour)
-        if area < min_area or h == 0:
+        if area < min_area or h == 0 or w == 0:
             continue
 
         aspect = w / float(h)
         if aspect < 0.55:
-            # Too narrow - that is a book spine, not the bin.
-            continue
+            continue            # too narrow: that is a book spine
+        if aspect > max_aspect:
+            continue            # a wide thin band is a wall edge, not the bin
+        if area / float(w * h) < min_fill:
+            continue            # ragged: not a solid box face
 
         if best is None or area > best['area']:
             best = {
                 'bbox': (x, y, w, h),
                 'centroid': (x + w / 2.0, y + h / 2.0),
                 'area': float(area),
+                'aspect': float(aspect),
                 'colour': 'bin',
             }
 
     return best
+
+
+def column_box_from_plate(plate, shape, column_width_ratio=1.9,
+                          top_pad=0.6):
+    """Bounding box for the whole shelf column a number plate labels.
+
+    The rules ask for a box around the **target shelf column**, not around the
+    digit that identifies it.  The plate hangs directly above its own column
+    and the column runs from there to the bottom of the frame, so the box is
+    the plate grown downwards and widened to the column pitch, clipped to the
+    image.
+
+    ``shape`` is the image's ``(h, w, ...)``.
+    """
+    h, w = shape[0], shape[1]
+    x, y, bw, bh = plate['bbox']
+    cx = x + bw / 2.0
+
+    half = max(bw, 1) * column_width_ratio
+    x0 = int(max(0, cx - half))
+    x1 = int(min(w, cx + half))
+    y0 = int(max(0, y - bh * top_pad))
+    y1 = int(h)
+    return (x0, y0, max(1, x1 - x0), max(1, y1 - y0))
+
+
+def annotate_many(bgr, detections, label_fns, thickness=2):
+    """Draw several labelled boxes, each with its own label function."""
+    out = bgr.copy()
+    for det, label_fn in zip(detections, label_fns):
+        out = annotate(out, [det], label_fn, thickness=thickness)
+    return out
 
 
 def annotate(bgr, detections, label_fn, thickness=2):
