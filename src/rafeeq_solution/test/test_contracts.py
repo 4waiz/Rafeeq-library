@@ -533,3 +533,34 @@ def test_a_label_near_the_right_edge_stays_inside_the_frame():
     assert columns.max() <= frame.shape[1] - 1, 'drawing ran off the frame'
     assert columns.min() < x, (
         'the label was left at the box, where it would run off the frame')
+
+
+def test_the_caption_moves_out_of_the_way_of_a_top_row_book():
+    """The box around the book is what the rules ask the image to show.
+
+    A book in the top row sits directly behind a four-line caption.  With the
+    caption at the top, the box is legible only through the text; moved to the
+    foot of the frame, the top of the image is clear for it.
+    """
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution import vision
+    frame = np.zeros((360, 640, 3), np.uint8)
+    caption = ['Rafeeq / Team Kanban  20260909_233044_902',
+               'target: red book in row 1 (row from ordering confirmed by height)',
+               'measured world (+2.794, -0.586, 1.580) m',
+               'column chosen by plate reference (y -0.425, 4 book(s) within 0.40 m)',
+               'offset from column centre -0.161 m, against the measured plate']
+    band = vision.stamp_height(frame, caption)
+    assert band > 40, 'a five-line caption should occupy a real band'
+
+    top = vision.stamp(frame, caption, at_bottom=False)
+    bottom = vision.stamp(frame, caption, at_bottom=True)
+
+    def ink_rows(img):
+        return np.argwhere(img.any(axis=2))[:, 0]
+
+    assert ink_rows(top).min() < band, 'caption was not at the top'
+    assert ink_rows(bottom).min() > frame.shape[0] // 2, (
+        'caption did not move to the foot of the frame')
+    assert ink_rows(bottom).max() <= frame.shape[0] - 1, (
+        'caption ran off the bottom of the frame')

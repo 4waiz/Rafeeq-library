@@ -492,13 +492,18 @@ def wrap_to_width(line, pixels, scale=0.5):
     return rows
 
 
-def stamp(bgr, lines, origin=(8, 18)):
-    """Burn a few lines of status text into the top-left of an image.
+def stamp(bgr, lines, origin=(8, 18), at_bottom=False):
+    """Burn a few lines of status text into a corner of an image.
 
     Lines wrap to the frame width rather than running off the right edge.  A
     caption that loses its last few words loses exactly the part a reader was
     meant to check - one evidence image was cut off mid-way through the book's
     measured offset from its column centre.
+
+    ``at_bottom`` moves the block to the foot of the frame.  A book in the top
+    row of the shelf sits behind a four-line caption, and the box around it is
+    the one thing the rules ask the image to show; the caption gets out of its
+    way rather than the other way round.
     """
     out = bgr.copy()
     x, y = origin
@@ -506,6 +511,9 @@ def stamp(bgr, lines, origin=(8, 18)):
     wrapped = []
     for line in lines:
         wrapped.extend(wrap_to_width(line, out.shape[1] - x - 6))
+
+    if at_bottom:
+        y = out.shape[0] - 18 * len(wrapped) + 8
 
     for i, line in enumerate(wrapped):
         pos = (x, y + i * 18)

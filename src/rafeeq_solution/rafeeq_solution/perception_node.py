@@ -872,10 +872,14 @@ class PerceptionNode(Node):
         path = os.path.join(self.image_dir, name)
 
         caption = ['Rafeeq / Team Kanban  ' + stamp_text] + list(lines)
+        # Keep the caption off the boxes it describes.  A top-row book sits
+        # right behind a four-line header, and the box around it is the one
+        # thing the rules ask this image to show.
+        band = vision.stamp_height(bgr, caption)
+        at_bottom = any(det['bbox'][1] < band for det in detections)
         annotated = vision.annotate_many(
-            bgr, detections, label_fns,
-            avoid_top=vision.stamp_height(bgr, caption))
-        annotated = vision.stamp(annotated, caption)
+            bgr, detections, label_fns, avoid_top=0 if at_bottom else band)
+        annotated = vision.stamp(annotated, caption, at_bottom=at_bottom)
 
         try:
             if not cv2.imwrite(path, annotated):
