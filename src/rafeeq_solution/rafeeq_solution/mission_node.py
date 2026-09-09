@@ -164,6 +164,9 @@ class MissionNode(Node):
         self.stage_times = {}
         self.failure_reason = ''
         self.evidence = {}
+        #: When the column slot first arrived, so the evidence path that
+        #: follows it on a different topic gets a moment to catch up.
+        self._slot_seen_at = None
 
         self.invalid = self._validate_inputs()
 
@@ -474,8 +477,23 @@ class MissionNode(Node):
         self.evidence.pop('column_image', None)
         self.set_mode('column')
 
+    #: How long to let the evidence path catch up with the slot number.
+    IMAGE_GRACE = 3.0
+
     def check_detect_column(self):
         if self.column_slot is not None:
+            # The slot number arrives on a latched topic and the evidence path
+            # on the status topic, so the slot can win the race by a frame or
+            # two.  Advancing on the slot alone forfeits the 2 points for the
+            # column image - which is what happened on all five trials of the
+            # first batch, every one of them logging "no annotated column image
+            # was recorded" while the file sat on disk.
+            if not self.evidence.get('column_image'):
+                if self._slot_seen_at is None:
+                    self._slot_seen_at = self.now()
+                if self.now() - self._slot_seen_at < self.IMAGE_GRACE:
+                    return None
+
             self.get_logger().info(
                 'number plate {} identified above physical column {} '
                 '(world y = {:+.2f} m)'.format(
@@ -490,8 +508,9 @@ class MissionNode(Node):
                 self.score.award('column_image', image)
             else:
                 self.get_logger().warn(
-                    'no annotated column image was recorded; the 2 points for '
-                    'it are not claimed')
+                    'no annotated column image was recorded within {:.0f} s of '
+                    'the slot number; the 2 points for it are not claimed'
+                    .format(self.IMAGE_GRACE))
             return 'NAV_COLUMN'
 
         if self.elapsed <= self.timeouts['detect']:

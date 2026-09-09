@@ -353,8 +353,45 @@ def test_column_image_points_are_not_claimed_without_an_image():
     node.entered = node._clock.now()
     node.column_slot = 2                 # slot arrives, no image announced
     node.tick()
+    advance(node, node.IMAGE_GRACE + 1.0)   # give the path its moment
+    node.tick()
     assert 'column_topic' in node.score.awarded
     assert 'column_image' not in node.score.awarded
+
+
+def test_the_column_image_is_credited_when_it_arrives_a_frame_late():
+    """All five trials of the first batch forfeited these 2 points.
+
+    The slot number arrives on a latched topic and the evidence path on the
+    status topic.  The state advanced on the slot alone, so every run logged
+    "no annotated column image was recorded" while the file sat on disk, and
+    every score estimate came out 2 points light.
+    """
+    node = make()
+    node.state = 'DETECT_COLUMN'
+    node.entered = node._clock.now()
+    node.column_slot = 3                 # latched topic wins the race
+    node.tick()
+    assert node.state == 'DETECT_COLUMN', (
+        'advanced before the evidence path could arrive')
+
+    node.on_perception(Msg(data='column:done:3:/tmp/shelf_column_late.png'))
+    node.tick()
+    assert 'column_image' in node.score.awarded
+    assert node.evidence['column_image'] == '/tmp/shelf_column_late.png'
+
+
+def test_a_column_image_that_never_arrives_does_not_stall_the_run():
+    """The grace period is a courtesy to a slow topic, not a dependency."""
+    node = make()
+    node.state = 'DETECT_COLUMN'
+    node.entered = node._clock.now()
+    node.column_slot = 3
+    node.tick()
+    assert node.state == 'DETECT_COLUMN'
+    advance(node, node.IMAGE_GRACE + 1.0)
+    node.tick()
+    assert node.state == 'NAV_COLUMN'
 
 
 def test_grasp_failure_retries_then_fails_and_never_reaches_done():
