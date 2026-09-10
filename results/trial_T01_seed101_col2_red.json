@@ -7,35 +7,36 @@
   },
   "detected": {
     "bin_point_world": null,
-    "book_offset_from_column_centre": -0.1705,
+    "book_offset_from_column_centre": -0.1709,
     "book_offset_measured_against": "plate re-read from the book-scan pose",
     "book_point_world": [
-      2.7918760959913915,
-      -0.5924612284593552,
-      1.5442447793398713
+      2.7921173048999632,
+      -0.5929151943609418,
+      1.544854289844508
     ],
     "book_row": 1,
     "column_point_world": [
-      2.7542519840372,
-      -0.42066221700947465,
-      2.2602596707226414
+      2.754296433795707,
+      -0.4217026071780992,
+      2.260296844083771
     ],
     "physical_column_slot": 3
   },
   "evidence": {
-    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260909_220753_087.png"
+    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260909_233947_516.png",
+    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260909_233421_228.png"
   },
   "failure_reason": "never located a red book in column 3 (last perception status: \"book:searching:saw=['green', 'yellow']\")",
   "grasp": {
     "attempts": 2,
     "held_width": 0.0,
     "plan": {
-      "grasp": "2.2913,-0.5916,0.0000",
-      "ik_error": "0.0023",
-      "retreat": "1.8713,-0.5916,0.0000",
+      "grasp": "2.2918,-0.5920,0.0000",
+      "ik_error": "0.0028",
+      "retreat": "1.8718,-0.5920,0.0000",
       "roll": "+y",
       "spine_offset": "-0.054",
-      "stage": "1.4613,-0.5916,0.0000"
+      "stage": "1.4618,-0.5920,0.0000"
     }
   },
   "outcome": "failed",
@@ -53,7 +54,7 @@
           "link": "tiago_pro::arm_left_6_link::arm_left_6_link_collision",
           "object": "erc_table",
           "state": "FACE_SHELF",
-          "time": 38.83
+          "time": 38.632
         }
       ],
       "penalty": 0.5,
@@ -77,7 +78,7 @@
       "column_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260909_220753_087.png",
+        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260909_233421_228.png",
         "points": 2.0
       },
       "column_topic": {
@@ -107,7 +108,7 @@
       "row_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260909_220833_843.png",
+        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260909_233502_022.png",
         "points": 2.0
       },
       "row_topic": {
@@ -120,10 +121,10 @@
     "total_estimate": 5.5
   },
   "timing": {
-    "simulated_seconds_total": 364.26,
+    "simulated_seconds_total": 364.77,
     "stage_seconds": {
       "ARM_PREGRASP": 14.4,
-      "BOOK_POSE": 12.6,
+      "BOOK_POSE": 12.4,
       "CLOSE_GRASP": 7.6,
       "COLUMN_REF": 1.4,
       "COLUMN_REF_POSE": 7.8,
@@ -134,11 +135,11 @@
       "NAV_COLUMN": 9.4,
       "NAV_GRASP": 15.6,
       "NAV_STAGE": 11.4,
-      "PLAN_GRASP": 134.0,
+      "PLAN_GRASP": 134.8,
       "RECOVER": 12.4,
       "REFINE": 2.8,
       "SCAN_POSE": 4.2,
-      "WAIT_READY": 1.06
+      "WAIT_READY": 0.97
     }
   }
 }

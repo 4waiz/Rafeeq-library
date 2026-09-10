@@ -7,36 +7,36 @@
   },
   "detected": {
     "bin_point_world": null,
-    "book_offset_from_column_centre": -0.0223,
+    "book_offset_from_column_centre": -0.0224,
     "book_offset_measured_against": "plate re-read from the book-scan pose",
     "book_point_world": [
-      3.0002067117735263,
-      0.5396972054240353,
-      0.5847181484363517
+      2.9999032306847124,
+      0.5395973725441775,
+      0.5847210956005437
     ],
     "book_row": 4,
     "column_point_world": [
-      2.934842447764904,
-      0.5673284695396709,
-      2.259252007176813
+      2.934550329174795,
+      0.5672829624936682,
+      2.2591870130502287
     ],
     "physical_column_slot": 2
   },
   "evidence": {
-    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260909_223332_544.png",
-    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260909_222344_537.png"
+    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260910_000023_105.png",
+    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260909_235023_363.png"
   },
   "failure_reason": "grasp failed: verify grasp check failed: the fingers closed to 0.0140 m (pad gap 0.0160 m) with no contact on any book - the book was missed",
   "grasp": {
     "attempts": 3,
     "held_width": 0.0,
     "plan": {
-      "grasp": "2.4998,0.5397,0.0000",
+      "grasp": "2.4995,0.5396,0.0000",
       "ik_error": "0.0029",
-      "retreat": "2.0798,0.5397,0.0000",
+      "retreat": "2.0795,0.5396,0.0000",
       "roll": "-y",
       "spine_offset": "+0.072",
-      "stage": "1.6698,0.5397,0.0000"
+      "stage": "1.6695,0.5396,0.0000"
     }
   },
   "outcome": "failed",
@@ -54,7 +54,7 @@
           "link": "tiago_pro::arm_left_6_link::arm_left_6_link_collision",
           "object": "erc_table",
           "state": "FACE_SHELF",
-          "time": 39.032
+          "time": 38.832
         }
       ],
       "penalty": 0.5,
@@ -78,7 +78,7 @@
       "column_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260909_222344_537.png",
+        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260909_235023_363.png",
         "points": 2.0
       },
       "column_topic": {
@@ -108,7 +108,7 @@
       "row_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260909_222421_503.png",
+        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260909_235101_199.png",
         "points": 2.0
       },
       "row_topic": {
@@ -121,25 +121,25 @@
     "total_estimate": 5.5
   },
   "timing": {
-    "simulated_seconds_total": 395.37,
+    "simulated_seconds_total": 398.7,
     "stage_seconds": {
-      "ARM_PREGRASP": 58.8,
+      "ARM_PREGRASP": 58.6,
       "BOOK_POSE": 12.6,
       "CLOSE_GRASP": 11.4,
-      "COLUMN_REF": 1.4,
-      "COLUMN_REF_POSE": 42.0,
-      "DETECT_BOOK": 13.4,
+      "COLUMN_REF": 1.6,
+      "COLUMN_REF_POSE": 42.2,
+      "DETECT_BOOK": 12.8,
       "DETECT_COLUMN": 2.0,
       "FACE_SHELF": 4.4,
       "HOME": 21.2,
       "NAV_COLUMN": 9.4,
       "NAV_GRASP": 22.8,
       "NAV_STAGE": 18.2,
-      "PLAN_GRASP": 42.2,
+      "PLAN_GRASP": 46.0,
       "RECOVER": 12.4,
       "REFINE": 4.2,
       "SCAN_POSE": 4.2,
-      "WAIT_READY": 1.17
+      "WAIT_READY": 1.1
     }
   }
 }

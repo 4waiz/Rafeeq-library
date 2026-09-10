@@ -120,7 +120,7 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
    5/5 across five seeds, with the measured offset from the column centre
    averaging 0.157 m against an organiser jitter of ±0.25 m — a
    neighbouring column would be about 1 m out. Ground-truth spot check on
-   the worst previous case: −0.264 m recorded against −0.246 m true.
+   the worst previous case: −0.266 m recorded against −0.246 m true.
    See [`odometry_drift.md`](odometry_drift.md).
 6. **Wheel odometry drifts far enough to matter** — 0.29 m and 0.18 rad over a
    single traverse, measured against ground truth. Several checks were made

@@ -45,10 +45,10 @@ seeds, five different columns, all four colours.
 
 The identification rates are worth a sentence, because "5/5" on its own could
 mean the robot found *a* book. Across the five trials the measured offset of
-the chosen book from its column centre averaged **0.157 m**, largest 0.264 m,
+the chosen book from its column centre averaged **0.157 m**, largest 0.266 m,
 against an organiser jitter of ±0.25 m. A book from a neighbouring column would
 be about a metre out. Spot-checked against Gazebo ground truth on the case that
-used to fail worst: −0.264 m recorded against −0.246 m true.
+used to fail worst: −0.266 m recorded against −0.246 m true.
 
 **One thing is honestly not working, and one is costing points.**
 

@@ -34,7 +34,7 @@ different columns, all four colours:
 |---|---|
 | Target column identified, published, evidence image | **5/5** |
 | Book row identified, published, evidence image | **5/5** |
-| Book's measured offset from its column centre | mean **0.157 m**, max **0.264 m** (organiser jitter is ±0.25 m) |
+| Book's measured offset from its column centre | mean **0.157 m**, max **0.266 m** (organiser jitter is ±0.25 m) |
 | Reached the shelf and closed on the book | 5/5 attempted |
 | Book retained | **0/5** |
 | Delivered | **0/5** |
@@ -44,7 +44,7 @@ Two of those figures are worth reading twice. Identification used to be 1 in 3;
 it is now 5 in 5, and the offsets say the *right* book is being found rather
 than merely a book — a book from a neighbouring column would be about 1 m out,
 not 0.16 m. Spot-checked against Gazebo ground truth on the case that used to
-fail worst (seed 404): the recorded offset was −0.264 m against a true −0.246 m.
+fail worst (seed 404): the recorded offset was −0.266 m against a true −0.246 m.
 
 ## The one thing that does not work
 
