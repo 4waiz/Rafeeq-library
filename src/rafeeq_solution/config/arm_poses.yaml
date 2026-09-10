@@ -34,7 +34,7 @@ arm_poses:
   # own side, then verified by forward kinematics:
   #
   #   tucked       right gripper at base-frame (-0.249, -0.285, +0.875)
-  #   tucked_left  left  gripper at base-frame (-0.246, +0.286, +0.759)
+  #   tucked_left  left  gripper at base-frame (+0.007, -0.152, +0.758)
   #
   # This matters more than it looks.  The previous `tucked` pose left the
   # gripper at base-frame x = +0.706, and the left arm was never commanded at
@@ -43,8 +43,28 @@ arm_poses:
   # shelf: measured 12 852 gripper_left_fingertip/erc_shelf contacts in a
   # single move, with the right arm physically blocked 1.2 rad short of its
   # target.  Tucking both arms before approaching removes that entirely.
+  #
+  # `tucked_left` is the right arm's tuck, mirrored.  Its own search-derived
+  # pose put the left wrist out at a 0.516 m radius and hanging at world
+  # z = 0.668 - below the 0.740 m table top - so as the base turned to face the
+  # shelf it swept to within 0.084 m of the table, less than the link's own
+  # radius.  That cost -0.5 on all five recorded trials, always the same
+  # arm_left_6_link/erc_table contact, and it was the only collision in the set.
+  #
+  # Joints 2-7 are geometrically identical on both arms in the URDF; only joint
+  # 1 is mounted mirrored, with exactly negated limits.  Reusing the right
+  # arm's q2..q7 with q1 negated therefore folds the left arm into the same
+  # compact shape that has never collided.  Measured on the running simulator,
+  # link origins agreeing with forward kinematics to the millimetre:
+  #
+  #   worst approach to the table over the whole turn   0.084 m -> 0.425 m
+  #   largest radius of any wrist link from the base    0.516 m -> 0.238 m
+  #   lowest link, world z                              0.668 m -> 0.710 m
+  #
+  # What is left at 0.425 m is arm_left_2_link, the shoulder, which does not
+  # move.  No contacts of any kind are reported while the pose is held.
   tucked:      [+0.020, -2.000, +1.738, -1.664, +1.524, -1.638, -0.552]
-  tucked_left: [+0.174, -2.205, -1.216, -1.338, +1.128, +2.851, -1.355]
+  tucked_left: [-0.020, -2.000, +1.738, -1.664, +1.524, -1.638, -0.552]
 
 # Torso heights for non-grasping activities.  The grasp height is solved, not
 # listed: it comes out of the IK for the measured book row.

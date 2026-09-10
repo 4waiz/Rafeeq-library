@@ -564,3 +564,53 @@ def test_the_caption_moves_out_of_the_way_of_a_top_row_book():
         'caption did not move to the foot of the frame')
     assert ink_rows(bottom).max() <= frame.shape[0] - 1, (
         'caption ran off the bottom of the frame')
+
+
+# --------------------------------------------------------------------------
+# The drive tucks
+# --------------------------------------------------------------------------
+
+
+def _arm_poses():
+    yaml = pytest.importorskip('yaml')
+    path = os.path.join(PKG, 'config', 'arm_poses.yaml')
+    with open(path, encoding='utf-8') as handle:
+        return yaml.safe_load(handle)['arm_poses']
+
+
+def test_the_left_tuck_mirrors_the_right_one():
+    """The left arm had a tuck of its own, and it hit the table every run.
+
+    It put the wrist out at a 0.516 m radius, hanging at world z = 0.668 -
+    below the 0.740 m table top - so the turn to face the shelf swept it to
+    within 0.084 m of the table, less than the link's own radius.  That was
+    -0.5 on all five recorded trials and the only collision in the set.
+
+    Joints 2-7 are geometrically identical on both arms in the URDF and only
+    joint 1 is mounted mirrored, with exactly negated limits, so the right
+    arm's tuck - which has never collided - transfers directly.  Measured on
+    the simulator afterwards, the worst approach went from 0.084 m to 0.425 m.
+    """
+    poses = _arm_poses()
+    right, left = poses['tucked'], poses['tucked_left']
+    assert len(left) == len(right) == 7
+    assert left[1:] == right[1:], (
+        'the left tuck no longer mirrors the right one; the shape that clears '
+        'the table is q2..q7 of the right arm')
+    assert left[0] == pytest.approx(-right[0], abs=1e-6), (
+        'joint 1 is mounted mirrored, so its angle must be negated')
+
+
+def test_both_tucks_keep_the_grippers_behind_the_base():
+    """The reason both arms are tucked at all.
+
+    An arm left forward sits inside the shelf when the base parks to grasp -
+    12 852 fingertip/shelf contacts in a single move, before this existed.
+    """
+    poses = _arm_poses()
+    for name in ('tucked', 'tucked_left'):
+        assert len(poses[name]) == 7
+    # Shoulder-lift well back, elbow folded: the shape that keeps the wrist in.
+    for name in ('tucked', 'tucked_left'):
+        assert poses[name][1] < -1.5, (
+            '{} no longer folds the shoulder back'.format(name))

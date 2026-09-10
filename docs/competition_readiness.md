@@ -96,6 +96,7 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 | Root `README.md` rewrite | **verified** |
 | `report/Rafeeq_ERC2026_Phase1_Report.pdf` | **verified** — 5 body pages + title, 0.09 MB, every figure read from `results/` at build time |
 | `docs/odometry_drift.md` | **verified** |
+| `docs/assets/rafeeq_logo.png` (README and report title page) | **verified** |
 | Demonstration video | **missing** — requires a successful run; see `grasp_blocker.md` |
 | `v1.0.0` release against the validated commit | not yet prepared |
 | Fresh-clone reproduction test | not yet run |
@@ -105,11 +106,15 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 1. **The grasp does not retain the book.** Everything downstream of it — the
    grasp points, both navigation awards, and the placement points — is
    therefore unearned. Characterised in [`grasp_blocker.md`](grasp_blocker.md).
-2. **A left-arm collision at start-up.** The tucked left arm brushes the
-   table while the base turns to face the shelf, costing −0.5. It is the
-   *only* collision in the five recorded trials, and it happens on every one
-   of them — 2.5 points across the set. The tuck pose needs re-selecting
-   with the table in the clearance model.
+2. ~~**A left-arm collision at start-up.**~~ **Fixed.** The tucked left arm
+   swept within 0.084 m of the table as the base turned - less than the
+   link's own radius - and clipped it on all five recorded trials.
+   `tucked_left` is now the right arm's tuck mirrored, which takes the worst
+   approach to 0.425 m; the contact does not occur in any of the five
+   re-run trials, and two of them are now collision-free. Four contacts of
+   two other kinds remain: the working arm brushing a neighbouring book as
+   it enters the shelf, and the base reversing over a dropped book. Both
+   are downstream of the grasp and both are open.
 3. **The demonstration video cannot honestly be produced yet**, because there
    is no successful run to record.
 4. Bin detection and delivery verification are implemented and unit-tested but
@@ -118,9 +123,9 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
    from a neighbouring column, confidently and repeatably, because it
    compared measurements against positions the robot only believed. Now
    5/5 across five seeds, with the measured offset from the column centre
-   averaging 0.157 m against an organiser jitter of ±0.25 m — a
+   averaging 0.149 m against an organiser jitter of ±0.25 m — a
    neighbouring column would be about 1 m out. Ground-truth spot check on
-   the worst previous case: −0.266 m recorded against −0.246 m true.
+   the worst previous case: −0.253 m recorded against −0.246 m true.
    See [`odometry_drift.md`](odometry_drift.md).
 6. **Wheel odometry drifts far enough to matter** — 0.29 m and 0.18 rad over a
    single traverse, measured against ground truth. Several checks were made

@@ -7,36 +7,36 @@
   },
   "detected": {
     "bin_point_world": null,
-    "book_offset_from_column_centre": -0.1709,
+    "book_offset_from_column_centre": -0.1615,
     "book_offset_measured_against": "plate re-read from the book-scan pose",
     "book_point_world": [
-      2.7921173048999632,
-      -0.5929151943609418,
-      1.544854289844508
+      2.8695888351890595,
+      -0.341543383895962,
+      1.5880345505859674
     ],
     "book_row": 1,
     "column_point_world": [
-      2.754296433795707,
-      -0.4217026071780992,
-      2.260296844083771
+      2.748195967968292,
+      -0.17668806665072254,
+      2.2544296081976762
     ],
     "physical_column_slot": 3
   },
   "evidence": {
-    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260909_233947_516.png",
-    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260909_233421_228.png"
+    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260910_025453_436.png",
+    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260910_025416_515.png"
   },
-  "failure_reason": "never located a red book in column 3 (last perception status: \"book:searching:saw=['green', 'yellow']\")",
+  "failure_reason": "the book was lost during extraction: retention check check failed: the fingertips are no longer in contact with a book - it has been dropped",
   "grasp": {
-    "attempts": 2,
+    "attempts": 0,
     "held_width": 0.0,
     "plan": {
-      "grasp": "2.2918,-0.5920,0.0000",
-      "ik_error": "0.0028",
-      "retreat": "1.8718,-0.5920,0.0000",
+      "grasp": "2.3370,-0.3265,0.0000",
+      "ik_error": "0.0030",
+      "retreat": "1.9170,-0.3265,0.0000",
       "roll": "+y",
       "spine_offset": "-0.054",
-      "stage": "1.4618,-0.5920,0.0000"
+      "stage": "1.5070,-0.3265,0.0000"
     }
   },
   "outcome": "failed",
@@ -51,10 +51,10 @@
       "count": 1,
       "events": [
         {
-          "link": "tiago_pro::arm_left_6_link::arm_left_6_link_collision",
-          "object": "erc_table",
-          "state": "FACE_SHELF",
-          "time": 38.632
+          "link": "tiago_pro::base_footprint::base_footprint_fixed_joint_lump__base_link_collision",
+          "object": "book_col_3_row_2_red",
+          "state": "RETREAT",
+          "time": 99.838
         }
       ],
       "penalty": 0.5,
@@ -78,7 +78,7 @@
       "column_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260909_233421_228.png",
+        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260910_025416_515.png",
         "points": 2.0
       },
       "column_topic": {
@@ -108,7 +108,7 @@
       "row_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260909_233502_022.png",
+        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260910_025453_436.png",
         "points": 2.0
       },
       "row_topic": {
@@ -121,25 +121,27 @@
     "total_estimate": 5.5
   },
   "timing": {
-    "simulated_seconds_total": 364.77,
+    "simulated_seconds_total": 89.66,
     "stage_seconds": {
-      "ARM_PREGRASP": 14.4,
-      "BOOK_POSE": 12.4,
-      "CLOSE_GRASP": 7.6,
-      "COLUMN_REF": 1.4,
-      "COLUMN_REF_POSE": 7.8,
-      "DETECT_BOOK": 24.8,
-      "DETECT_COLUMN": 2.0,
-      "FACE_SHELF": 4.4,
-      "HOME": 21.2,
+      "ARM_PREGRASP": 7.6,
+      "BOOK_POSE": 4.0,
+      "CLOSE_GRASP": 3.8,
+      "COLUMN_REF": 0.6,
+      "COLUMN_REF_POSE": 2.6,
+      "CONFIRM_HOLD": 1.2,
+      "DETECT_BOOK": 3.0,
+      "DETECT_COLUMN": 2.6,
+      "FACE_SHELF": 4.2,
+      "HOME": 21.0,
+      "LIFT": 2.4,
       "NAV_COLUMN": 9.4,
-      "NAV_GRASP": 15.6,
-      "NAV_STAGE": 11.4,
-      "PLAN_GRASP": 134.8,
-      "RECOVER": 12.4,
-      "REFINE": 2.8,
+      "NAV_GRASP": 7.6,
+      "NAV_STAGE": 5.2,
+      "PLAN_GRASP": 1.6,
+      "REFINE": 1.4,
+      "RETREAT": 6.2,
       "SCAN_POSE": 4.2,
-      "WAIT_READY": 0.97
+      "WAIT_READY": 1.06
     }
   }
 }

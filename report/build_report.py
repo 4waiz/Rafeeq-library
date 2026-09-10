@@ -293,19 +293,25 @@ def title_page(doc, summary, baseline):
     doc.new_page()
     fig = doc.fig
 
+    # The logo carries the wordmark - "Rafeeq", "Library Robot" and the motto -
+    # so it stands in for the type that used to be set here rather than sitting
+    # above a repeat of itself.
     logo = os.path.join(ROOT, 'docs', 'assets', 'rafeeq_logo.png')
     if os.path.exists(logo):
         data = mpimg.imread(logo)
         ar = data.shape[1] / float(data.shape[0])
-        h = 0.17
+        h = 0.26
         w = h * ar * (A4[1] / A4[0])
-        ax = fig.add_axes([0.5 - w / 2.0, 0.70, w, h])
+        ax = fig.add_axes([0.5 - w / 2.0, 0.615, w, h])
         ax.imshow(data)
         ax.axis('off')
+    else:
+        # Fall back to type, so a missing asset degrades rather than leaving a
+        # title page with no title on it.
+        fig.text(0.5, 0.700, 'Rafeeq', size=40, weight='bold',
+                 color=ACCENT, ha='center')
+        fig.text(0.5, 0.662, 'Library Robot', size=17, color=INK, ha='center')
 
-    fig.text(0.5, 0.645, 'Rafeeq', size=40, weight='bold',
-             color=ACCENT, ha='center')
-    fig.text(0.5, 0.607, 'Library Robot', size=17, color=INK, ha='center')
     fig.text(0.5, 0.575, 'Autonomous book retrieval on TIAGo Pro',
              size=10.5, color=MUTED, ha='center')
 

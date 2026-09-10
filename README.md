@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/rafeeq_logo.png" alt="Rafeeq Library Robot" width="220"/>
-
-# Rafeeq — Library Robot
+<img src="docs/assets/rafeeq_logo.png" alt="Rafeeq — Library Robot" width="300"/>
 
 **Autonomous book retrieval on TIAGo Pro**
 Emirates Robotics Competition 2026 · Phase 1 · **Team Kanban**, Al Ain University
@@ -45,10 +43,10 @@ seeds, five different columns, all four colours.
 
 The identification rates are worth a sentence, because "5/5" on its own could
 mean the robot found *a* book. Across the five trials the measured offset of
-the chosen book from its column centre averaged **0.157 m**, largest 0.266 m,
+the chosen book from its column centre averaged **0.149 m**, largest 0.253 m,
 against an organiser jitter of ±0.25 m. A book from a neighbouring column would
 be about a metre out. Spot-checked against Gazebo ground truth on the case that
-used to fail worst: −0.266 m recorded against −0.246 m true.
+used to fail worst: −0.253 m recorded against −0.246 m true.
 
 **One thing is honestly not working, and one is costing points.**
 
@@ -58,11 +56,15 @@ used to fail worst: −0.266 m recorded against −0.246 m true.
    Everything gated on it — the grasp points, both navigation awards and the
    placement points — is **not earned**, and this repository does not claim
    them.
-2. **The tucked left arm brushes the table** as the base turns to face the
-   shelf. It is the only collision in the five trials and it occurs in all of
-   them: −0.5 each, 2.5 across the set.
+2. **Collisions are down but not gone.** The tucked left arm used to clip the
+   table on every single run; that is fixed, and two of the five trials are now
+   completely clean. What remains is four contacts of two other kinds: the
+   working arm brushing a neighbouring book as it enters the shelf (2 runs),
+   and the base reversing over a book the gripper had already dropped (1 run).
+   Both are downstream of the grasp; neither is claimed as solved.
 
-Mean estimated score across the recorded trials: **5.5 / 19**.
+Mean estimated score across the recorded trials: **5.6 / 19**, and two of the
+five are collision-free at the 6.0 that identification alone can earn.
 
 What that leaves is a working perception-to-motion pipeline and a mission that
 **reports failure honestly instead of manufacturing success**. An earlier

@@ -14,8 +14,8 @@ depends on a human action says so explicitly.
 | 1 | **Grasp retention does not work.** See [`docs/grasp_blocker.md`](docs/grasp_blocker.md). | 13 of 19 points are unearned: grasp (3), shelf navigation (3, awarded on grasp), return (3, awarded on delivery), placement (2–4). |
 | 2 | **No demonstration video exists**, and one cannot honestly be made, because the video must show a *successful* run. | The video is 10% of the grade. |
 | 3 | **The deadline is unconfirmed.** The RIT page states 1 August 2026; the v1.0 PDF states 15 September 2026. Today is 9 September 2026. | If 1 August is correct the window has already closed. **Confirm with the organisers, including their timezone.** |
-| 4 | **The tucked left arm brushes the table** while the base turns to face the shelf. It happened on all five trials, always the same contact. | −0.5 every run, 2.5 points across five. Cheap to fix: re-select the tuck pose with the table in the clearance model. |
-| 5 | **Logo file not in the repository.** `docs/assets/rafeeq_logo.png` is referenced by the README and the report title page but the file has not been saved. | Broken image in both. Drop the PNG at that path. |
+| 4 | ~~The tucked left arm brushes the table.~~ **Fixed.** `tucked_left` is now the right arm's tuck mirrored; worst approach to the table over the turn went from 0.084 m to 0.425 m. |
+| 5 | ~~Logo file not in the repository.~~ **Done.** `docs/assets/rafeeq_logo.png` is in place and leads both the README and the report title page. |
 
 ---
 
@@ -77,7 +77,7 @@ organiser commits (`ae4d1d9`, `51486d7`, `0a09806`).
 | Action | Why |
 |---|---|
 | Confirm the Phase 1 deadline and timezone with the organisers | Two published dates conflict; one has passed |
-| Save the Rafeeq logo to `docs/assets/rafeeq_logo.png` | Referenced by README and report |
+| ~~Save the Rafeeq logo~~ | **Done** — `docs/assets/rafeeq_logo.png` |
 | Decide whether to submit with the grasp unresolved | It is a 13-point gap; the alternative is to raise the blocker with the organisers first |
 | Record the demonstration video | Only possible once a run succeeds |
 | Approve the push and the `v1.0.0` release | Nothing is published without it |

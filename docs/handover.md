@@ -34,17 +34,17 @@ different columns, all four colours:
 |---|---|
 | Target column identified, published, evidence image | **5/5** |
 | Book row identified, published, evidence image | **5/5** |
-| Book's measured offset from its column centre | mean **0.157 m**, max **0.266 m** (organiser jitter is ±0.25 m) |
+| Book's measured offset from its column centre | mean **0.149 m**, max **0.253 m** (organiser jitter is ±0.25 m) |
 | Reached the shelf and closed on the book | 5/5 attempted |
 | Book retained | **0/5** |
 | Delivered | **0/5** |
-| Mean estimated score | **5.5 / 19** |
+| Mean estimated score | **5.6 / 19**; two of the five trials are collision-free at 6.0 |
 
 Two of those figures are worth reading twice. Identification used to be 1 in 3;
 it is now 5 in 5, and the offsets say the *right* book is being found rather
 than merely a book — a book from a neighbouring column would be about 1 m out,
 not 0.16 m. Spot-checked against Gazebo ground truth on the case that used to
-fail worst (seed 404): the recorded offset was −0.266 m against a true −0.246 m.
+fail worst (seed 404): the recorded offset was −0.253 m against a true −0.246 m.
 
 ## The one thing that does not work
 
@@ -88,6 +88,45 @@ that plate. Full write-up, with the measurements, in
 If you add any check against an absolute world coordinate, it will fail
 intermittently and the failure will look like a perception bug.
 
+## The collision that happened on every run
+
+Both arms are tucked before the base drives, because an arm left forward sits
+inside the shelf when the robot parks to grasp. The right arm's tuck was fine.
+The left arm had a tuck of its own, found by the same workspace search, and it
+put the wrist out at a 0.516 m radius hanging at world z = 0.668 — below the
+0.740 m table top. The robot spawns at world (0, 0) yawed 90 degrees and turns
+in place to face the shelf, and that turn swept the wrist to within 0.084 m of
+the table, less than the link's own radius. Result: `arm_left_6_link` against
+`erc_table`, −0.5, on all five recorded trials, and the only collision in the
+set.
+
+The fix needed no search. In the URDF, arm joints 2 to 7 are geometrically
+identical on both arms; only joint 1 is mounted mirrored, with exactly negated
+limits. So the right arm's tuck — which has never collided — transfers to the
+left arm by negating joint 1 and keeping the rest. Measured afterwards on the
+running simulator, with link origins agreeing with forward kinematics to the
+millimetre:
+
+| | Before | After |
+|---|---|---|
+| Worst approach to the table over the turn | 0.084 m | **0.425 m** |
+| Largest radius of any wrist link from the base | 0.516 m | 0.238 m |
+| Lowest link, world z | 0.668 m | 0.710 m |
+
+What limits it at 0.425 m is `arm_left_2_link`, the shoulder, which does not
+move. No contacts of any kind are reported while the pose is held, and a live
+run goes `HOME → FACE_SHELF → SCAN_POSE` with a collision count of zero.
+
+Reproduce the measurement with `tools/diagnostics/tuck_clearance.py`.
+
+Across the five trials re-run afterwards, that contact does not occur once,
+against five for five before. Two trials are now completely collision-free.
+Four contacts of two other kinds remain, and neither is this one: the working
+right arm brushing a neighbouring book as it reaches into the shelf (2 runs,
+`NAV_GRASP`), and the base reversing over a book the gripper had already
+dropped (1 run, `RETREAT`). Both sit downstream of the grasp blocker — the
+second only happens because a book ends up on the floor — and both are open.
+
 ## Things worth knowing before touching this
 
 * **Two simulators on one `ROS_DOMAIN_ID` serve the same topics from different
@@ -107,12 +146,12 @@ intermittently and the failure will look like a perception bug.
 | Item | Owner |
 |---|---|
 | Confirm the Phase 1 deadline **and timezone** — the RIT page says 1 Aug 2026, the v1.0 PDF says 15 Sep 2026 | you |
-| Save the logo to `docs/assets/rafeeq_logo.png` (referenced by README and report title page) | you |
+| ~~Save the logo~~ | **done** — `docs/assets/rafeeq_logo.png` leads the README and the report title page |
 | Decide whether to submit with the grasp unresolved, or raise it with the organisers first | you |
 | Record the demonstration video — impossible until a run succeeds | you |
 | Approve any push, tag or release | you |
 | Grasp retention | open — blocker |
-| The tucked left arm brushes the table while the base turns to face the shelf: −0.5 on **every** trial, 5 for 5, always the same contact | open — cheap to fix, worth 2.5 points across five runs |
+| ~~The tucked left arm brushes the table~~ | **fixed** — see below |
 | Fresh-clone `colcon build` on a Linux host | open |
 
 ## Release safety
