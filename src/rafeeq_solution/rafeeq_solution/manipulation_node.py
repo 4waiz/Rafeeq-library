@@ -971,6 +971,32 @@ class ManipulationNode(Node):
                              math.cos(tilt) * math.sin(here[2]),
                              math.sin(tilt)])
 
+        # Correct sideways and up, never deeper.
+        #
+        # The refine exists to absorb base error, but the base's error along
+        # the approach must not be absorbed by extending the arm.  The gripper
+        # body behind the pads is wider than the gap between them, so it cannot
+        # pass the book: at the planned pose it clears the spine face by
+        # 0.0265 m, and a base that stopped short of its goal would have the
+        # arm make that up and drive the body into the book.  Measured, that
+        # pushed the book 0.0154 m deeper - after which the pads closed beside
+        # it rather than around it.
+        #
+        # Depth is the one axis with slack to give: the pads are 0.057 m long,
+        # so gripping a centimetre or two shallower costs nothing.  So when the
+        # base is short, the target moves back with it and the arm keeps the
+        # extension the plan validated.
+        target = list(plan.grasp_world)
+        planned_base = getattr(plan, 'base_grasp', None)
+        if planned_base is not None:
+            ahead = (math.cos(here[2]), math.sin(here[2]))
+            short = ((here[0] - planned_base[0]) * ahead[0]
+                     + (here[1] - planned_base[1]) * ahead[1])
+            if short < 0.0:
+                target[0] += short * ahead[0]
+                target[1] += short * ahead[1]
+                self.job_detail['refine_held_back'] = '{:.4f}'.format(-short)
+
         planner = self.planner
         planner._row = arena.nearest_row(self._plan_target[2])
         planner._column_y = arena.COLUMN_Y.get(
@@ -978,7 +1004,7 @@ class ManipulationNode(Node):
         saved = planner.lock_torso(plan.arm_q[0])
         try:
             q, info = planner._solve_fixed_sign(
-                plan.grasp_world, (here[0], here[1]), here[2], approach,
+                tuple(target), (here[0], here[1]), here[2], approach,
                 plan.finger_sign, self._current_full(), name='grasp refine')
         finally:
             planner.unlock_torso(saved)

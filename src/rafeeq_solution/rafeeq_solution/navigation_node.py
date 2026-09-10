@@ -112,7 +112,14 @@ class NavigationNode(Node):
         self.declare_parameter('max_angular', 0.6)
         self.declare_parameter('kp_linear', 1.1)
         self.declare_parameter('kp_angular', 1.6)
-        self.declare_parameter('position_tolerance', 0.02)
+        # Tolerance along the goal heading.  0.02 m was too loose for the
+        # grasp approach: the gripper body clears the book's spine face by
+        # 0.0265 m, so a base that stops 0.02 m short and lets the arm make it
+        # up drives the body into the book, while holding the arm back by the
+        # same 0.02 m leaves the pads short of it.  Both margins are within a
+        # couple of centimetres of each other, so the base has to actually
+        # arrive.
+        self.declare_parameter('position_tolerance', 0.006)
         # Tolerance *across* the goal heading, which is a much tighter
         # constraint than along it.  Driving into a shelf row, an error along
         # the approach only changes how deep the pads grip - they span 0.057 m,
