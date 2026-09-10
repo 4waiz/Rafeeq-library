@@ -290,8 +290,14 @@ class MissionNode(Node):
                                        self.elapsed_total))
 
     def on_contacts(self, msg):
+        # NAV_GRASP belongs here: the base carries the open fingers onto the
+        # book during it, so the fingertips reach the spine before CLOSE_GRASP
+        # begins, and penalising that penalised the gripper for arriving.  The
+        # exemption is narrow - see `scoring.CollisionMonitor.is_intentional`,
+        # which allows it for gripper links only, so an arm link striking a
+        # book still counts here as anywhere else.
         manipulating = self.state in (
-            'CLOSE_GRASP', 'LIFT', 'REFINE', 'RETREAT', 'CARRY',
+            'NAV_GRASP', 'CLOSE_GRASP', 'LIFT', 'REFINE', 'RETREAT', 'CARRY',
             'PLACE', 'RELEASE', 'BACK_OFF')
         self.collisions.manipulating = manipulating
         for event in self.collisions.ingest(msg, self.now(), self.state or ''):

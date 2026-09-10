@@ -213,7 +213,17 @@ SCAN_STANDOFF_X = 0.0
 BOOK_SCAN_STANDOFF = 1.5
 #: Where to park to reach into the shelf.  The measured reachable envelope is
 #: 0.45-0.65 m from the book plane for every row (see docs).
-GRASP_STANDOFF = 0.52
+#:
+#: This was 0.52 while perception published the book's *spine face* instead of
+#: its centre - so the base was really parking 0.60 m from the centre, and the
+#: standoff was quietly absorbing that 0.08 m bias.  Correcting the measurement
+#: without correcting this drove the base 0.08 m closer to the shelf and halved
+#: its clearance, from 0.174 m to 0.094 m; drift ate the rest and one trial put
+#: ``base_footprint`` into ``erc_shelf``.  The base's leading edge sits 0.281 m
+#: ahead of ``base_link``, so 0.60 restores exactly the clearance every earlier
+#: trial ran with.  Reach is not the constraint: the planner solves this row
+#: for row with the same 0.003 m IK error out to a 0.68 m standoff.
+GRASP_STANDOFF = 0.60
 #: Where the arm is moved into its grasp posture.  Far enough back that the
 #: arm cannot touch the shelf *while swinging into that posture*: the gripper
 #: reaches at most ~0.98 m in front of ``base_link``, so at 1.35 m of standoff

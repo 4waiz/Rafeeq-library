@@ -132,25 +132,48 @@ def patch_half_for_bbox(bbox, cap=4, floor=1):
     return int(max(floor, min(cap, min(int(w), int(h)) // 3)))
 
 
-def patch_depth(depth_m, u, v, half=4):
-    """Median depth over a small patch, ignoring NaNs.
+#: Depths within this of the nearest surface in a patch are taken to be part
+#: of the same surface.  A book spine is flat and faces the camera, so its own
+#: pixels agree to a few millimetres; the shelf behind it is 0.28 m further.
+NEAR_SURFACE_TOLERANCE = 0.05
 
-    A single pixel is a coin flip, so a median over a patch is used instead -
-    but the patch has to **fit inside the object**. A book spine is 0.03 m
-    wide, which is about 7 px at the 1.5 m scan range, so the default 9x9
-    window straddles it and medians in the shelf behind. That inflates the
-    range, and because the lateral deprojection scales with range it threw
-    measured book positions out by ~0.5 m - half a column pitch, enough to
-    place every book in the wrong column. Callers that know the detection's
-    size should pass a matching ``half``; see :func:`patch_half_for_bbox`.
+
+def patch_depth(depth_m, u, v, half=4, tolerance=NEAR_SURFACE_TOLERANCE):
+    """Distance to the **nearest surface** in a small patch, ignoring NaNs.
+
+    A single pixel is a coin flip, so a patch is used instead - but the patch
+    has to fit inside the object. A book spine is 0.03 m wide, about 7 px at
+    the 1.5 m scan range, so the default 9x9 window straddles it and reads the
+    shelf behind. That inflates the range, and because the lateral
+    deprojection scales with range it threw measured book positions out by
+    ~0.5 m. Callers that know the detection's size should pass a matching
+    ``half``; see :func:`patch_half_for_bbox`.
+
+    Sizing the patch is necessary but not sufficient. Even a patch that fits
+    catches background at the edges, and a plain median then mixes the object
+    with what is behind it and reads *between* the two. Measured against
+    ground truth on seven books, a median put the spine face - really at
+    2.820 m - anywhere from 2.822 m to 2.905 m, a 0.083 m spread biased 0.04 m
+    behind the surface it was supposed to be measuring.
+
+    The object is by construction the nearest thing inside its own bounding
+    box, so this takes a low order statistic to find the near surface, then
+    averages the pixels that agree with it. That rejects background bleed
+    without being at the mercy of a single near outlier the way a plain
+    minimum would be.
     """
     h, w = depth_m.shape[:2]
     u0, u1 = max(0, int(u) - half), min(w, int(u) + half + 1)
     v0, v1 = max(0, int(v) - half), min(h, int(v) + half + 1)
     patch = depth_m[v0:v1, u0:u1]
 
-    if patch.size == 0 or not np.any(np.isfinite(patch)):
+    if patch.size == 0:
+        return None
+    finite = patch[np.isfinite(patch)]
+    if finite.size == 0:
         return None
 
-    value = float(np.nanmedian(patch))
+    near = float(np.percentile(finite, 20))
+    surface = finite[finite <= near + tolerance]
+    value = float(np.median(surface)) if surface.size else near
     return value if np.isfinite(value) else None

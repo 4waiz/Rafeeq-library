@@ -690,3 +690,118 @@ def test_the_book_is_ranked_alongside_the_shelf_not_after_it():
     assert 'book_offender' in src, 'plan_grasp no longer checks the book'
     assert "max(info.get('shelf_penetration', 0.0), book_depth)" in src, (
         'the book has to gate acceptance, not just be recorded')
+
+
+# --------------------------------------------------------------------------
+# Measuring how far away the book is
+# --------------------------------------------------------------------------
+#
+# Measured book x scattered by +/-0.25 m against a true 2.900.  Two separate
+# faults, needing opposite fixes:
+#
+#   * a median over the depth patch mixed the spine with the shelf behind it
+#     and read *between* them - the face, really at 2.820, came back anywhere
+#     from 2.822 to 2.905 on seven books;
+#   * nothing then converted the face the camera can see into the centre every
+#     consumer assumes, so the grasp aimed 0.08 m short.
+
+
+def _depth_patch(values):
+    np = pytest.importorskip('numpy')
+    return np.array(values, dtype=float)
+
+
+def test_background_bleed_no_longer_drags_the_reading_backwards():
+    """A patch straddling the spine edge must read the spine, not the blend.
+
+    The spine is about 7 px wide at scan range, so even a fitted patch catches
+    the shelf at its edges, and the edge pixels themselves come back as a blend
+    of the two ranges.  A median then lands on the blend - which is how a face
+    really at 2.820 m came back anywhere up to 2.905 m.
+    """
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution.image_utils import patch_depth
+    book, edge, shelf = 1.50, 1.62, 1.78
+    values = [book] * 11 + [edge] * 3 + [shelf] * 11
+    patch = np.array(values, dtype=float).reshape(5, 5)
+
+    assert float(np.median(patch)) == pytest.approx(edge), (
+        'this patch does not reproduce the failure, so it proves nothing'
+    )
+    got = patch_depth(patch, 2, 2, half=2)
+    assert got == pytest.approx(book, abs=0.01), (
+        'read {:.3f} for a surface at {:.3f}'.format(got, book)
+    )
+
+
+def test_a_single_near_outlier_does_not_win():
+    """Why a low order statistic and not the minimum."""
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution.image_utils import patch_depth
+    patch = np.full((5, 5), 1.50)
+    patch[0, 0] = 0.42                        # one bad pixel
+    assert patch_depth(patch, 2, 2, half=2) == pytest.approx(1.50, abs=0.02)
+
+
+def test_a_uniform_patch_is_unchanged():
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution.image_utils import patch_depth
+    patch = np.full((5, 5), 1.234)
+    assert patch_depth(patch, 2, 2, half=2) == pytest.approx(1.234, abs=1e-6)
+
+
+def test_nans_are_still_ignored():
+    np = pytest.importorskip('numpy')
+    from rafeeq_solution.image_utils import patch_depth
+    patch = np.full((5, 5), np.nan)
+    assert patch_depth(patch, 2, 2, half=2) is None
+    patch[3, 3] = 1.6
+    assert patch_depth(patch, 2, 2, half=2) == pytest.approx(1.6, abs=1e-6)
+
+
+def test_the_published_book_point_is_the_centre_not_the_face():
+    """The camera sees the face; every consumer assumes the centre.
+
+    `grasp.GRASP_DEPTH` grips 0.06 m in front of what it is handed, so the
+    face put the fingers 0.06 m in front of the book instead of 0.02 m inside
+    its front face.  The same number anchors the shelf plane the arm's whole
+    clearance model hangs off.
+    """
+    import inspect
+    perception = os.path.join(PKG, 'rafeeq_solution', 'perception_node.py')
+    src = open(perception, encoding='utf-8').read()
+    body = src.split('def _do_book')[1].split('def _pick_column')[0]
+    assert 'arena.BOOK_DEPTH / 2.0' in body, (
+        'the measured spine face is being published as the book position'
+    )
+    # And the grip lands inside the book once the centre is used.
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    depth = grasp_mod.GraspPlanner.GRASP_DEPTH
+    assert -arena.BOOK_DEPTH / 2.0 < depth < 0.0, (
+        'the grip must sit inside the book, measured from its centre'
+    )
+
+
+def test_the_base_keeps_its_clearance_from_the_shelf():
+    """Correcting the book depth moved the base towards the shelf.
+
+    The standoff is measured from the book, and the book moved 0.08 m deeper
+    when perception started reporting the centre instead of the spine face, so
+    the base followed it in.  Its leading edge sits 0.281 m ahead of base_link;
+    at the old 0.52 m standoff that left 0.094 m of clearance, and one trial's
+    drift ate all of it and put base_footprint into erc_shelf.
+    """
+    base_front = 0.281
+    base_x = arena.BOOK_X - arena.GRASP_STANDOFF
+    clearance = arena.SHELF_FRONT_X - (base_x + base_front)
+    assert clearance > 0.15, (
+        'base clears the shelf by only {:.3f} m; drift alone has been '
+        'measured at 0.094 m'.format(clearance)
+    )
+
+
+def test_the_arm_is_still_moved_into_posture_out_of_reach_of_the_shelf():
+    """The transit standoff has to stay well beyond the grasp standoff."""
+    assert arena.ARM_TRANSIT_STANDOFF > arena.GRASP_STANDOFF + 0.5, (
+        'the arm would take its grasp posture close enough to touch the shelf'
+    )

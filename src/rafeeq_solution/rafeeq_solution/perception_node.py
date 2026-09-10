@@ -674,12 +674,27 @@ class PerceptionNode(Node):
                 sorted({b['colour'] for b in in_column})))
             return
 
-        world = target['world']
+        # Rank and resolve the row on the raw measurement - the row comes from
+        # height, which the depth correction below does not touch - so that
+        # `rank_rows` can annotate the detections it was given.
         ranked = vision.rank_rows(in_column, self.row_one_is_top)
-        row, method = self._resolve_row(target, ranked, world)
+        row, method = self._resolve_row(target, ranked, target['world'])
         if row is None:
             self._status('book:searching:ambiguous:{}'.format(len(ranked)))
             return
+
+        # The camera can only see the spine face; everything downstream wants
+        # the book's centre.  The gap is half the book's depth, and it is not
+        # cosmetic.  `grasp.GRASP_DEPTH` grips 0.06 m in front of whatever it
+        # is given, so handing it the face closed the fingers 0.06 m in front
+        # of the book - on air, which is what "the fingers closed with no
+        # contact on any book" was.  The same value also anchors the shelf
+        # face that the arm's entire clearance model hangs off, so the arm was
+        # driven 0.08 m deeper than the model believed.  Books face -x, so the
+        # correction is along world x.  Measured against ground truth, the
+        # face itself now comes back within 0.011 m.
+        world = (target['world'][0] + arena.BOOK_DEPTH / 2.0,
+                 target['world'][1], target['world'][2])
 
         # The row has already been published once this run; a later look that
         # disagrees is a bad measurement or a book that has been knocked out of

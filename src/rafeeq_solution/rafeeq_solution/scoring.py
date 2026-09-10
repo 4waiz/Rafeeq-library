@@ -100,9 +100,15 @@ class CollisionMonitor(object):
         if other_model in self.intentional_models:
             return True
         if self.manipulating and other_model.startswith('book_') \
-                and ('gripper_' in link or 'arm_' in link):
+                and 'gripper_' in link:
             # Closing the fingers on a book registers as contact on the finger
             # sensors.  That is the task, not a collision.
+            #
+            # Only the gripper's own links get this.  An arm link striking a
+            # book is a collision whenever it happens: the wrist reaching the
+            # target before the fingers do is how the robot knocked its own
+            # target over, and excusing it because the robot happened to be
+            # grasping at the time would have hidden that entirely.
             return True
         return False
 
