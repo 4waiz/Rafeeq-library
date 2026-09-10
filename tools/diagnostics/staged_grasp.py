@@ -49,14 +49,18 @@ def send(verb,*a,**kw):
             if m.startswith('done|%d|'%sq):   print('   done: %s'%m.split('|',3)[-1][:120]); return True,m
             if m.startswith('failed|%d|'%sq): print('   FAIL: %s'%m.split('|',3)[-1][:150]); return False,m
     print('   TIMEOUT'); return False,''
-def drive(wx,wy,wyaw,tol=0.015,timeout=140):
+def drive(wx,wy,wyaw,tol=0.02,lat=0.008,timeout=140):
     gx,gy=arena.world_to_odom(wx,wy); gyaw=arena.world_yaw_to_odom(wyaw)
     t0=time.time()
     while time.time()-t0<timeout:
         spin(0.05)
         if st['odom'] is None: continue
         x,y,yaw=st['odom']; ex,ey=gx-x,gy-y; eyaw=arena.normalize_angle(gyaw-yaw)
-        if math.hypot(ex,ey)<tol and abs(eyaw)<0.02: cmd.publish(Twist()); return True
+        # Anisotropic, like navigation_node: error across the heading puts a
+        # fingertip into the book's spine, error along it only changes grip depth.
+        cg,sg=math.cos(gyaw),math.sin(gyaw)
+        along=ex*cg+ey*sg; across=-ex*sg+ey*cg
+        if abs(along)<tol and abs(across)<lat and abs(eyaw)<0.02: cmd.publish(Twist()); return True
         c,s=math.cos(-yaw),math.sin(-yaw)
         t=Twist(); t.linear.x=max(-0.25,min(0.25,0.9*(c*ex-s*ey)))
         t.linear.y=max(-0.25,min(0.25,0.9*(s*ex+c*ey))); t.angular.z=max(-0.5,min(0.5,1.5*eyaw))

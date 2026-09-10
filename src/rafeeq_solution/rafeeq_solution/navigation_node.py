@@ -113,6 +113,16 @@ class NavigationNode(Node):
         self.declare_parameter('kp_linear', 1.1)
         self.declare_parameter('kp_angular', 1.6)
         self.declare_parameter('position_tolerance', 0.02)
+        # Tolerance *across* the goal heading, which is a much tighter
+        # constraint than along it.  Driving into a shelf row, an error along
+        # the approach only changes how deep the pads grip - they span 0.057 m,
+        # so 0.02 m is nothing.  An error across it puts a fingertip into the
+        # book's spine: the pads clear it by a measured 0.0128 m per side at
+        # full opening, which is *less* than the 0.02 m radial tolerance, so
+        # the base could legitimately "arrive" with a finger already touching
+        # the book, then drag it 0.047 m deeper as it finished advancing.  That
+        # is what put the book out of the jaw before the gripper ever closed.
+        self.declare_parameter('lateral_tolerance', 0.008)
         self.declare_parameter('yaw_tolerance', 0.02)
         self.declare_parameter('approach_slowdown', 0.35)
         self.declare_parameter('obstacle_stop_distance', 0.42)
@@ -131,6 +141,7 @@ class NavigationNode(Node):
         self.kp_linear = float(self.get_parameter('kp_linear').value)
         self.kp_angular = float(self.get_parameter('kp_angular').value)
         self.pos_tol = float(self.get_parameter('position_tolerance').value)
+        self.lat_tol = float(self.get_parameter('lateral_tolerance').value)
         self.yaw_tol = float(self.get_parameter('yaw_tolerance').value)
         self.slowdown = float(self.get_parameter('approach_slowdown').value)
         self.stop_distance = float(
@@ -301,15 +312,23 @@ class NavigationNode(Node):
         eyaw = arena.normalize_angle(gyaw - yaw)
         distance = math.hypot(ex_odom, ey_odom)
 
-        if distance <= self.pos_tol and abs(eyaw) <= self.yaw_tol:
+        # Split the error into along- and across-heading components: they are
+        # not equally forgiving.  See `lateral_tolerance`.
+        cg, sg = math.cos(gyaw), math.sin(gyaw)
+        along = ex_odom * cg + ey_odom * sg
+        across = -ex_odom * sg + ey_odom * cg
+
+        if (abs(along) <= self.pos_tol and abs(across) <= self.lat_tol
+                and abs(eyaw) <= self.yaw_tol):
             self.goal = None
             self.state = 'reached'
             self.pub_cmd.publish(Twist())
             self.get_logger().info(
-                'reached world ({:+.3f}, {:+.3f}), {:.3f} m and {:.1f} deg '
-                'of residual error'.format(
-                    self.goal_world[0], self.goal_world[1], distance,
-                    math.degrees(abs(eyaw))))
+                'reached world ({:+.3f}, {:+.3f}), {:.3f} m along and '
+                '{:.3f} m across the heading, {:.1f} deg of residual '
+                'error'.format(
+                    self.goal_world[0], self.goal_world[1], abs(along),
+                    abs(across), math.degrees(abs(eyaw))))
             self._status('reached')
             return
 
@@ -333,6 +352,29 @@ class NavigationNode(Node):
         scale = min(1.0, self.slowdown + distance)
         vx = clamp(self.kp_linear * ex, self.max_linear) * scale
         vy = clamp(self.kp_linear * ey, self.max_linear) * scale
+
+        # Line up before going in, not while going in.
+        #
+        # Tightening the *arrival* tolerance constrains where the base stops,
+        # not the path it takes to get there, and the path is what matters
+        # here: driving the open gripper into a shelf row, the pads clear the
+        # book's spine by a measured 0.0128 m on the tighter side.  A base that
+        # wanders further than that sideways part-way in catches a fingertip on
+        # the spine and drags the book deeper - measured at 0.047 m - so by the
+        # time the fingers close the book is no longer between them.  It then
+        # closes to its commanded 0.016 m gap on a 0.030 m book, touching it
+        # with one pad's outside face, which cannot lift anything.
+        #
+        # So while the across-heading error is outside tolerance, the
+        # along-heading velocity is suppressed: the base corrects sideways
+        # first and only then advances.
+        if abs(across) > self.lat_tol:
+            along_hat = (cos_yaw * math.cos(gyaw) - sin_yaw * math.sin(gyaw),
+                         sin_yaw * math.cos(gyaw) + cos_yaw * math.sin(gyaw))
+            along_speed = vx * along_hat[0] + vy * along_hat[1]
+            if along_speed > 0.0:
+                vx -= along_speed * along_hat[0]
+                vy -= along_speed * along_hat[1]
 
         blocked = self._apply_clearance(vx, vy, distance)
         if blocked is not None:

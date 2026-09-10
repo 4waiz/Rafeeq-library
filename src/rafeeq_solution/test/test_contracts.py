@@ -805,3 +805,50 @@ def test_the_arm_is_still_moved_into_posture_out_of_reach_of_the_shelf():
     assert arena.ARM_TRANSIT_STANDOFF > arena.GRASP_STANDOFF + 0.5, (
         'the arm would take its grasp posture close enough to touch the shelf'
     )
+
+
+# --------------------------------------------------------------------------
+# Getting the pads around the spine without knocking the book away
+# --------------------------------------------------------------------------
+
+
+def test_the_lateral_tolerance_is_inside_the_fingers_clearance():
+    """Measured at the grasp pose, with the gripper at its widest.
+
+        BOOK             y[0.2157, 0.2457]
+        fingertip_left   y[0.1682, 0.1995]   -> 0.0162 m clear
+        fingertip_right  y[0.2585, 0.2898]   -> 0.0128 m clear
+
+    The navigation goal tolerance was 0.02 m and radial, so the base could
+    legitimately arrive with 0.02 m of lateral error - more than the 0.0128 m
+    the tighter finger has - which put a fingertip against the spine and then
+    dragged the book 0.047 m deeper as the base finished advancing.  The pads
+    then closed on empty space 0.015 m in front of where the book had gone.
+    """
+    import re
+    path = os.path.join(PKG, 'rafeeq_solution', 'navigation_node.py')
+    source = open(path, encoding='utf-8').read()
+    m = re.search(r"declare_parameter\('lateral_tolerance',\s*([0-9.]+)\)",
+                  source)
+    assert m, 'the lateral tolerance is gone; the fingers will clip the spine'
+    lateral = float(m.group(1))
+    tightest_finger_clearance = 0.0128
+    assert lateral < tightest_finger_clearance, (
+        'lateral tolerance {:.4f} m exceeds the {:.4f} m the fingers clear the '
+        'spine by'.format(lateral, tightest_finger_clearance))
+    assert lateral <= tightest_finger_clearance * 0.75, (
+        'no margin left for anything but a perfect measurement'
+    )
+
+
+def test_arrival_is_judged_along_and_across_the_heading_separately():
+    """They are not equally forgiving, so one radial number cannot serve.
+
+    Along the approach, an error only changes how deep the pads grip - they
+    span 0.057 m.  Across it, the same error puts a finger into the book.
+    """
+    path = os.path.join(PKG, 'rafeeq_solution', 'navigation_node.py')
+    source = open(path, encoding='utf-8').read()
+    assert 'self.lat_tol' in source and 'self.pos_tol' in source, (
+        'arrival is back to a single radial tolerance')
+    assert 'across' in source and 'along' in source
