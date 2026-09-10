@@ -20,7 +20,7 @@ and reproducible with [`tools/diagnostics/`](../tools/diagnostics/).
 
 | | Result |
 |---|---|
-| Offline tests | **109 pytest + 23 vision**, all passing, no ROS or Gazebo needed |
+| Offline tests | **120 pytest + 23 vision**, all passing, no ROS or Gazebo needed |
 | Static analysis | pyflakes clean, enforced by `test_lint.py` |
 | Live trials | **5 recorded**, machine-readable, in [`results/`](../results/) |
 | Judges' launch commands | Run unmodified for every trial |
@@ -34,17 +34,17 @@ different columns, all four colours:
 |---|---|
 | Target column identified, published, evidence image | **5/5** |
 | Book row identified, published, evidence image | **5/5** |
-| Book's measured offset from its column centre | mean **0.149 m**, max **0.253 m** (organiser jitter is ±0.25 m) |
+| Book's measured offset from its column centre | mean **0.151 m**, max **0.250 m** (organiser jitter is ±0.25 m) |
 | Reached the shelf and closed on the book | 5/5 attempted |
 | Book retained | **0/5** |
 | Delivered | **0/5** |
-| Mean estimated score | **5.6 / 19**; two of the five trials are collision-free at 6.0 |
+| Mean estimated score | **5.9 / 19**; four of the five trials are collision-free at 6.0 |
 
 Two of those figures are worth reading twice. Identification used to be 1 in 3;
 it is now 5 in 5, and the offsets say the *right* book is being found rather
 than merely a book — a book from a neighbouring column would be about 1 m out,
 not 0.16 m. Spot-checked against Gazebo ground truth on the case that used to
-fail worst (seed 404): the recorded offset was −0.253 m against a true −0.246 m.
+fail worst (seed 404): the recorded offset was −0.250 m against a true −0.246 m.
 
 ## The one thing that does not work
 
@@ -120,12 +120,55 @@ run goes `HOME → FACE_SHELF → SCAN_POSE` with a collision count of zero.
 Reproduce the measurement with `tools/diagnostics/tuck_clearance.py`.
 
 Across the five trials re-run afterwards, that contact does not occur once,
-against five for five before. Two trials are now completely collision-free.
-Four contacts of two other kinds remain, and neither is this one: the working
-right arm brushing a neighbouring book as it reaches into the shelf (2 runs,
-`NAV_GRASP`), and the base reversing over a book the gripper had already
-dropped (1 run, `RETREAT`). Both sit downstream of the grasp blocker — the
-second only happens because a book ends up on the floor — and both are open.
+against five for five before.
+
+Fixing it exposed the next one, which is written up below: the working arm
+striking the target book on its way in. With both fixed, four of the five
+trials are collision-free and one contact remains in the whole set — the base
+reversing over a book the gripper had already dropped. That one exists only
+because the grasp drops the book, so it goes when the grasp does. Collisions
+across the three batches: **5 → 4 → 1**.
+
+## The collision that came after it
+
+Two trials reported `arm_right_6_link` striking the **target book** during
+`NAV_GRASP` — the wrist knocking the book over before the fingers arrived — and
+one of them also caught the shelf.
+
+The arm is solved once, for the moment the fingers close, and then held rigid
+while the base drives in, so the whole approach is that one posture swept along
+the shelf normal. The wrist sits **0.228 m deeper into the shelf than the
+grasping point**, so it passes the book on the way past. The planner never
+looked: it ranked candidates on shelf penetration alone, took the first tilt
+that scored a clean zero, and that plan cleared the book by **0.065 m** — less
+than the link's own 0.05 m radius, before any error in a measured book
+position. Exactly the failure mode as the tuck: link origins clearing by a
+hair while the physical envelope collides.
+
+Enumerating every approach tilt and wrist roll for the same book showed a
+strictly better option was always available:
+
+| Tilt | Roll | Shelf intrusion | Clearance from the book |
+|---|---|---|---|
+| +90 (what it chose) | −y | 0.000 | **0.065 m** |
+| +70 | +y | 0.000 | **0.179 m** |
+| +45 | +y | 0.000 | 0.158 m |
+| −45 | −y | 0.000 | 0.148 m |
+
+The book is now part of the clearance model. `GraspPlanner.book_offender`
+sweeps the whole base advance and reports the deepest intrusion into the book's
+box by any link that is not the gripper — the pads, fingers and the wrist
+frames they hang off are exempt, because they have to touch it — and acceptance
+takes the worse of the shelf and book figures instead of the shelf alone. The
+margin is twice the link radius: the first radius pays for walking link origins
+rather than meshes, the second for the measured book position being a few
+centimetres out.
+
+It only bites when it needs to. On books where the first tilt already clears by
+more than the margin it is accepted unchanged, reporting `book intrusion
+0.000 m`; on the geometry that collided it moves the plan to the +70 tilt.
+Re-run over the five trials, neither the arm/book nor the arm/shelf contact
+occurs again.
 
 ## Things worth knowing before touching this
 
@@ -167,7 +210,7 @@ second only happens because a book ends up on the floor — and both are open.
 ## Rebuilding anything
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q          # 109 offline tests
+python3 -m pytest src/rafeeq_solution/test -q          # 120 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py
 python3 report/build_report.py --preview               # PDF + page PNGs
 ```

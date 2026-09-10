@@ -14,7 +14,7 @@ depends on a human action says so explicitly.
 | 1 | **Grasp retention does not work.** See [`docs/grasp_blocker.md`](docs/grasp_blocker.md). | 13 of 19 points are unearned: grasp (3), shelf navigation (3, awarded on grasp), return (3, awarded on delivery), placement (2–4). |
 | 2 | **No demonstration video exists**, and one cannot honestly be made, because the video must show a *successful* run. | The video is 10% of the grade. |
 | 3 | **The deadline is unconfirmed.** The RIT page states 1 August 2026; the v1.0 PDF states 15 September 2026. Today is 9 September 2026. | If 1 August is correct the window has already closed. **Confirm with the organisers, including their timezone.** |
-| 4 | ~~The tucked left arm brushes the table.~~ **Fixed.** `tucked_left` is now the right arm's tuck mirrored; worst approach to the table over the turn went from 0.084 m to 0.425 m. |
+| 4 | ~~The tucked left arm brushes the table.~~ ~~The working arm strikes the target book.~~ **Both fixed** — 4 of 5 trials are now collision-free; the one remaining contact is the base reversing over a book the gripper dropped. |
 | 5 | ~~Logo file not in the repository.~~ **Done.** `docs/assets/rafeeq_logo.png` is in place and leads both the README and the report title page. |
 
 ---
@@ -57,13 +57,13 @@ organiser commits (`ae4d1d9`, `51486d7`, `0a09806`).
 | Book evidence image shows the book and its row | ☑ verified | `erc_images/target_book_*.png` |
 | Evidence images committed (not gitignored) | ☑ fixed | The previous `.gitignore` excluded exactly what the rules require |
 | Machine-readable trial records | ☑ **5 of 5** | `results/*.json`, five layout seeds, five columns, all four colours. Column and row identified, published and photographed on every one. |
-| Offline tests pass | ☑ verified | 109 pytest + 23 vision, pyflakes clean |
+| Offline tests pass | ☑ verified | 120 pytest + 23 vision, pyflakes clean |
 | No credentials, caches, build products or oversized media committed | ☐ to verify | Check before tagging |
 
 ## Before publishing the release
 
 1. ☐ `git status` clean; review the full diff
-2. ☐ `python3 -m pytest src/rafeeq_solution/test -q` — all 109 pass
+2. ☐ `python3 -m pytest src/rafeeq_solution/test -q` — all 120 pass
 3. ☐ `python3 src/rafeeq_solution/scripts/test_vision_offline.py` — all pass
 4. ☐ **Fresh clone into an empty directory; `colcon build --symlink-install`; run the judges' two commands with no edits.** Attempted and abandoned: cloning this tree out of the Windows filesystem into WSL stalls on the ~5 GB of vendored packages. Verified instead, directly against the commit: all text blobs are LF, shell scripts are executable, all required files present, offline tests pass. **A real fresh-clone build is still outstanding** — run it on a Linux host where the repo lives on the native filesystem.
 5. ☐ Rebuild the report from the final trial records; check page count, size and that no link is dead

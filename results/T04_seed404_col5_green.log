@@ -1,81 +1,75 @@
-[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-10-03-10-47-501983-Awaiz-104314
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-10-04-27-41-848642-Awaiz-111600
 [INFO] [launch]: Default logging verbosity is set to INFO
 [INFO] [launch.user]: [rafeeq] Team Kanban | target column 5, green book | grasping with the right arm | evidence -> /opt/erc_ws/src/erc_images
-[INFO] [perception_node-1]: process started with pid [104341]
-[INFO] [navigation_node-2]: process started with pid [104343]
-[INFO] [manipulation_node-3]: process started with pid [104345]
-[INFO] [mission_node-4]: process started with pid [104347]
-[navigation_node-2] [INFO] [1789009847.658390305] [rafeeq_navigation]: navigation up | holonomic waypoint control on /odom, both lidars used for a full-circle clearance check, spawn_yaw=1.5708 rad
-[mission_node-4] [INFO] [1789009847.658550191] [rafeeq_mission]: 
+[INFO] [perception_node-1]: process started with pid [111626]
+[INFO] [navigation_node-2]: process started with pid [111628]
+[INFO] [manipulation_node-3]: process started with pid [111630]
+[INFO] [mission_node-4]: process started with pid [111632]
+[navigation_node-2] [INFO] [1789014461.998830786] [rafeeq_navigation]: navigation up | holonomic waypoint control on /odom, both lidars used for a full-circle clearance check, spawn_yaw=1.5708 rad
+[mission_node-4] [INFO] [1789014462.005741388] [rafeeq_mission]: 
 [mission_node-4] ==================================================================
 [mission_node-4] RAFEEQ LIBRARY ROBOT - Team Kanban - ERC 2026 Phase 1
 [mission_node-4] run T04_seed404_col5_green: shelf column 5, green book
 [mission_node-4] ==================================================================
-[mission_node-4] [INFO] [1789009847.658854133] [rafeeq_mission]: [STATE] WAIT_READY  (t+0.0 s)
-[mission_node-4] [INFO] [1789009847.659017623] [rafeeq_mission]: waiting for controllers, joint feedback and odometry (no fixed sleep - readiness is observed)
-[mission_node-4] [INFO] [1789009847.660350996] [rafeeq_mission]: simulation clock is live at t=15.5 s; trial clock started
-[perception_node-1] [INFO] [1789009847.818121842] [rafeeq_perception]: perception up | target column=5 colour=green | digit templates=[1, 2, 3, 4, 5] | images -> /opt/erc_ws/src/erc_images
-[manipulation_node-3] [INFO] [1789009850.152064025] [rafeeq_manipulation]: IK chain: 8 DOF (torso_lift_joint, arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint), seed workspace warmed in 2.4 s
-[manipulation_node-3] [INFO] [1789009850.152341263] [rafeeq_manipulation]: manipulation up | arm=right | IK chain ready | gripper topic /gripper_right_controller/joint_trajectory
-[manipulation_node-3] [INFO] [1789009850.154432615] [rafeeq_manipulation]: all controllers, actions and joint feedback are up
-[mission_node-4] [INFO] [1789009850.512340759] [rafeeq_mission]: everything reported ready after 1.1 s
-[mission_node-4] [INFO] [1789009850.512653840] [rafeeq_mission]: [STATE] HOME  (t+1.1 s)
-[manipulation_node-3] [INFO] [1789009900.362728391] [rafeeq_manipulation]: home [1] done
-[mission_node-4] [INFO] [1789009900.367207830] [rafeeq_mission]: [STATE] FACE_SHELF  (t+21.9 s)
-[navigation_node-2] [INFO] [1789009900.368320649] [rafeeq_navigation]: goal: world (+0.00, +0.00, +0.0 deg)
-[navigation_node-2] [INFO] [1789009908.076259062] [rafeeq_navigation]: reached world (+0.000, +0.000), 0.001 m and 1.1 deg of residual error
-[mission_node-4] [INFO] [1789009908.333906059] [rafeeq_mission]: [STATE] SCAN_POSE  (t+26.1 s)
-[manipulation_node-3] [INFO] [1789009915.998337674] [rafeeq_manipulation]: scan_markers [2] done
-[mission_node-4] [INFO] [1789009916.390382493] [rafeeq_mission]: [STATE] DETECT_COLUMN  (t+30.3 s)
-[perception_node-1] [INFO] [1789009916.390892327] [rafeeq_perception]: mode -> column
-[perception_node-1] [INFO] [1789009916.738700782] [rafeeq_perception]: camera frames are stamped ahead of /tf on this bridge; using the latest transform while the base is stationary (<= 0.02 m/s)
-[perception_node-1] [INFO] [1789009920.711119900] [rafeeq_perception]: COLUMN CONFIRMED: number 5 is above physical column 2 (world y = +1.00 m) -> /opt/erc_ws/src/erc_images/shelf_column_20260910_031200_706.png
-[mission_node-4] [INFO] [1789009920.715570921] [rafeeq_mission]: number plate 5 identified above physical column 2 (world y = +1.00 m)
-[mission_node-4] [INFO] [1789009920.715838124] [rafeeq_mission]: [STATE] NAV_COLUMN  (t+32.7 s)
-[navigation_node-2] [INFO] [1789009920.716686611] [rafeeq_navigation]: goal: world (+1.40, +0.82, +0.0 deg)
-[navigation_node-2] [INFO] [1789009938.248277180] [rafeeq_navigation]: reached world (+1.400, +0.820), 0.020 m and 0.0 deg of residual error
-[mission_node-4] [INFO] [1789009938.616670251] [rafeeq_mission]: [STATE] COLUMN_REF_POSE  (t+42.3 s)
-[manipulation_node-3] [INFO] [1789009943.026353168] [rafeeq_manipulation]: scan_markers [3] done
-[mission_node-4] [INFO] [1789009943.389124171] [rafeeq_mission]: [STATE] COLUMN_REF  (t+44.9 s)
-[perception_node-1] [INFO] [1789009943.389648634] [rafeeq_perception]: mode -> column_ref
-[mission_node-4] [INFO] [1789009943.673143068] [rafeeq_mission]: perception: column_ref:searching:samples=1
-[perception_node-1] [INFO] [1789009944.207977427] [rafeeq_perception]: COLUMN REFERENCE: plate 5 measured at y = +0.817 m from the book-scan pose (spread 0.000 m over 3 frames); book columns are now judged against this, not against the image centre
-[mission_node-4] [INFO] [1789009944.455491166] [rafeeq_mission]: [STATE] BOOK_POSE  (t+45.5 s)
-[manipulation_node-3] [INFO] [1789009951.873270108] [rafeeq_manipulation]: scan_books [4] done
-[mission_node-4] [INFO] [1789009952.294245967] [rafeeq_mission]: [STATE] DETECT_BOOK  (t+49.7 s)
-[perception_node-1] [INFO] [1789009952.294761630] [rafeeq_perception]: mode -> book
-[perception_node-1] [INFO] [1789009959.551459921] [rafeeq_perception]: BOOK CONFIRMED: green book in row 2 (ordering confirmed by height), measured at world (+2.930, +0.564, 1.246), -0.253 m off the column centre (against the measured plate); column chosen by plate reference (y +0.817, 4 book(s) within 0.40 m) -> /opt/erc_ws/src/erc_images/target_book_20260910_031239_546.png
-[mission_node-4] [INFO] [1789009959.690774367] [rafeeq_mission]: green book identified in row 2, measured at world (+2.930, +0.564, 1.246) - -0.436 m from the column centre
-[mission_node-4] [INFO] [1789009959.691051961] [rafeeq_mission]: [STATE] NAV_STAGE  (t+53.5 s)
-[navigation_node-2] [INFO] [1789009959.698090255] [rafeeq_navigation]: goal: world (+1.58, +0.56, +0.0 deg)
-[navigation_node-2] [INFO] [1789009970.874666310] [rafeeq_navigation]: reached world (+1.580, +0.564), 0.020 m and 0.0 deg of residual error
-[mission_node-4] [INFO] [1789009970.950409022] [rafeeq_mission]: [STATE] PLAN_GRASP  (t+59.3 s)
-[manipulation_node-3] [INFO] [1789009973.889203331] [rafeeq_manipulation]: grasp plan: finger axis +y, grasp -0.036 m up the spine, torso 0.350 m, IK error 0.0030 m, base approach 0.83 m, retreat 0.42 m, tilt +90 deg, predicted shelf intrusion 0.000 m
-[manipulation_node-3] [INFO] [1789009973.889472671] [rafeeq_manipulation]: plan_grasp [5] done: grasp=2.3983,0.5794,0.0000 ik_error=0.0030 retreat=1.9783,0.5794,0.0000 roll=+y spine_offset=-0.036 stage=1.5683,0.5794,0.0000
-[mission_node-4] [INFO] [1789009974.131864957] [rafeeq_mission]: grasp planned: roll +y, -0.036 m up the spine, IK error 0.0030 m
-[mission_node-4] [INFO] [1789009974.132137000] [rafeeq_mission]: [STATE] ARM_PREGRASP  (t+60.9 s)
-[manipulation_node-3] [INFO] [1789009990.566918091] [rafeeq_manipulation]: arm_pregrasp [6] done
-[mission_node-4] [INFO] [1789009990.839363025] [rafeeq_mission]: [STATE] NAV_GRASP  (t+68.9 s)
-[navigation_node-2] [INFO] [1789009990.840260287] [rafeeq_navigation]: goal: world (+2.40, +0.58, +0.0 deg)
-[navigation_node-2] [INFO] [1789010011.674105891] [rafeeq_navigation]: reached world (+2.398, +0.579), 0.020 m and 0.0 deg of residual error
-[mission_node-4] [INFO] [1789010012.186665006] [rafeeq_mission]: [STATE] REFINE  (t+76.7 s)
-[manipulation_node-3] [INFO] [1789010015.707072170] [rafeeq_manipulation]: refine_grasp [7] done: refine_step=0.130
-[mission_node-4] [INFO] [1789010016.277418388] [rafeeq_mission]:   refine_step=0.130
-[mission_node-4] [INFO] [1789010016.277767893] [rafeeq_mission]: [STATE] CLOSE_GRASP  (t+78.1 s)
-[manipulation_node-3] [INFO] [1789010026.730859322] [rafeeq_manipulation]: close_grasp [8] done: holding=book_col_2_row_3_green pad_gap=0.0160
-[mission_node-4] [INFO] [1789010027.015539003] [rafeeq_mission]:   holding=book_col_2_row_3_green pad_gap=0.0160
-[mission_node-4] [INFO] [1789010027.015812178] [rafeeq_mission]: [STATE] LIFT  (t+81.9 s)
-[manipulation_node-3] [INFO] [1789010034.332051757] [rafeeq_manipulation]: lift [9] done: held=book_col_2_row_3_green
-[mission_node-4] [INFO] [1789010034.686715118] [rafeeq_mission]:   held=book_col_2_row_3_green
-[mission_node-4] [INFO] [1789010034.686986125] [rafeeq_mission]: [STATE] RETREAT  (t+84.3 s)
-[navigation_node-2] [INFO] [1789010034.687746729] [rafeeq_navigation]: goal: world (+1.98, +0.58, +0.0 deg)
-[navigation_node-2] [INFO] [1789010052.515121306] [rafeeq_navigation]: reached world (+1.978, +0.579), 0.020 m and 0.0 deg of residual error
-[mission_node-4] [INFO] [1789010052.797320285] [rafeeq_mission]: [STATE] CONFIRM_HOLD  (t+90.5 s)
-[manipulation_node-3] [ERROR] [1789010056.229065950] [rafeeq_manipulation]: check_hold [10] FAILED: retention check check failed: the fingertips are no longer in contact with a book - it has been dropped
-[mission_node-4] [ERROR] [1789010056.563028856] [rafeeq_mission]: MISSION FAILED in CONFIRM_HOLD: the book was lost during extraction: retention check check failed: the fingertips are no longer in contact with a book - it has been dropped
-[mission_node-4] [INFO] [1789010056.563446417] [rafeeq_mission]: [STATE] FAILED  (t+91.7 s)
-[mission_node-4] [INFO] [1789010056.564028716] [rafeeq_mission]: trial record -> /opt/erc_ws/src/results/trial_T04_seed404_col5_green.json
-[mission_node-4] [INFO] [1789010056.564233097] [rafeeq_mission]: 
+[mission_node-4] [INFO] [1789014462.006019502] [rafeeq_mission]: [STATE] WAIT_READY  (t+0.0 s)
+[mission_node-4] [INFO] [1789014462.006168310] [rafeeq_mission]: waiting for controllers, joint feedback and odometry (no fixed sleep - readiness is observed)
+[mission_node-4] [INFO] [1789014462.007416064] [rafeeq_mission]: simulation clock is live at t=15.5 s; trial clock started
+[perception_node-1] [INFO] [1789014462.167040009] [rafeeq_perception]: perception up | target column=5 colour=green | digit templates=[1, 2, 3, 4, 5] | images -> /opt/erc_ws/src/erc_images
+[manipulation_node-3] [INFO] [1789014464.462553345] [rafeeq_manipulation]: IK chain: 8 DOF (torso_lift_joint, arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint), seed workspace warmed in 2.4 s
+[manipulation_node-3] [INFO] [1789014464.462825226] [rafeeq_manipulation]: manipulation up | arm=right | IK chain ready | gripper topic /gripper_right_controller/joint_trajectory
+[manipulation_node-3] [INFO] [1789014464.464129854] [rafeeq_manipulation]: all controllers, actions and joint feedback are up
+[mission_node-4] [INFO] [1789014464.561754862] [rafeeq_mission]: everything reported ready after 0.9 s
+[mission_node-4] [INFO] [1789014464.562014676] [rafeeq_mission]: [STATE] HOME  (t+0.9 s)
+[manipulation_node-3] [INFO] [1789014514.841845871] [rafeeq_manipulation]: home [1] done
+[mission_node-4] [INFO] [1789014515.186622909] [rafeeq_mission]: [STATE] FACE_SHELF  (t+21.9 s)
+[navigation_node-2] [INFO] [1789014515.187655501] [rafeeq_navigation]: goal: world (+0.00, +0.00, +0.0 deg)
+[navigation_node-2] [INFO] [1789014522.973315804] [rafeeq_navigation]: reached world (+0.000, +0.000), 0.001 m and 1.1 deg of residual error
+[mission_node-4] [INFO] [1789014523.169074730] [rafeeq_mission]: [STATE] SCAN_POSE  (t+26.1 s)
+[manipulation_node-3] [INFO] [1789014530.870086069] [rafeeq_manipulation]: scan_markers [2] done
+[mission_node-4] [INFO] [1789014531.248202152] [rafeeq_mission]: [STATE] DETECT_COLUMN  (t+30.3 s)
+[perception_node-1] [INFO] [1789014531.248769091] [rafeeq_perception]: mode -> column
+[perception_node-1] [INFO] [1789014531.592832068] [rafeeq_perception]: camera frames are stamped ahead of /tf on this bridge; using the latest transform while the base is stationary (<= 0.02 m/s)
+[perception_node-1] [INFO] [1789014535.562306793] [rafeeq_perception]: COLUMN CONFIRMED: number 5 is above physical column 2 (world y = +1.00 m) -> /opt/erc_ws/src/erc_images/shelf_column_20260910_042855_557.png
+[mission_node-4] [INFO] [1789014535.910418091] [rafeeq_mission]: number plate 5 identified above physical column 2 (world y = +1.00 m)
+[mission_node-4] [INFO] [1789014535.910929344] [rafeeq_mission]: [STATE] NAV_COLUMN  (t+32.9 s)
+[navigation_node-2] [INFO] [1789014535.911745708] [rafeeq_navigation]: goal: world (+1.40, +0.82, +0.0 deg)
+[navigation_node-2] [INFO] [1789014553.343248268] [rafeeq_navigation]: reached world (+1.400, +0.825), 0.020 m and 0.0 deg of residual error
+[mission_node-4] [INFO] [1789014553.713004409] [rafeeq_mission]: [STATE] COLUMN_REF_POSE  (t+42.5 s)
+[manipulation_node-3] [INFO] [1789014558.206657437] [rafeeq_manipulation]: scan_markers [3] done
+[mission_node-4] [INFO] [1789014558.576109981] [rafeeq_mission]: [STATE] COLUMN_REF  (t+45.1 s)
+[perception_node-1] [INFO] [1789014558.576661448] [rafeeq_perception]: mode -> column_ref
+[mission_node-4] [INFO] [1789014558.845320414] [rafeeq_mission]: perception: column_ref:searching:samples=1
+[perception_node-1] [INFO] [1789014559.381439058] [rafeeq_perception]: COLUMN REFERENCE: plate 5 measured at y = +0.817 m from the book-scan pose (spread 0.000 m over 3 frames); book columns are now judged against this, not against the image centre
+[mission_node-4] [INFO] [1789014559.636095711] [rafeeq_mission]: [STATE] BOOK_POSE  (t+45.7 s)
+[manipulation_node-3] [INFO] [1789014567.157844032] [rafeeq_manipulation]: scan_books [4] done
+[mission_node-4] [INFO] [1789014567.543006801] [rafeeq_mission]: [STATE] DETECT_BOOK  (t+49.9 s)
+[perception_node-1] [INFO] [1789014567.543498983] [rafeeq_perception]: mode -> book
+[perception_node-1] [INFO] [1789014574.790175403] [rafeeq_perception]: BOOK CONFIRMED: green book in row 2 (ordering confirmed by height), measured at world (+2.915, +0.567, 1.248), -0.250 m off the column centre (against the measured plate); column chosen by plate reference (y +0.817, 4 book(s) within 0.40 m) -> /opt/erc_ws/src/erc_images/target_book_20260910_042934_785.png
+[mission_node-4] [INFO] [1789014575.078159030] [rafeeq_mission]: green book identified in row 2, measured at world (+2.915, +0.567, 1.248) - -0.433 m from the column centre
+[mission_node-4] [INFO] [1789014575.078429265] [rafeeq_mission]: [STATE] NAV_STAGE  (t+53.7 s)
+[navigation_node-2] [INFO] [1789014575.079067214] [rafeeq_navigation]: goal: world (+1.56, +0.57, +0.0 deg)
+[navigation_node-2] [INFO] [1789014586.173852373] [rafeeq_navigation]: reached world (+1.565, +0.567), 0.020 m and 0.0 deg of residual error
+[mission_node-4] [INFO] [1789014586.371673489] [rafeeq_mission]: [STATE] PLAN_GRASP  (t+59.5 s)
+[manipulation_node-3] [INFO] [1789014589.366318587] [rafeeq_manipulation]: grasp plan: finger axis +y, grasp -0.054 m up the spine, torso 0.350 m, IK error 0.0029 m, base approach 0.83 m, retreat 0.42 m, tilt +90 deg, predicted shelf intrusion 0.000 m, book intrusion 0.000 m
+[manipulation_node-3] [INFO] [1789014589.366577864] [rafeeq_manipulation]: plan_grasp [5] done: grasp=2.3833,0.5833,0.0000 ik_error=0.0029 retreat=1.9633,0.5833,0.0000 roll=+y spine_offset=-0.054 stage=1.5533,0.5833,0.0000
+[mission_node-4] [INFO] [1789014589.556202528] [rafeeq_mission]: grasp planned: roll +y, -0.054 m up the spine, IK error 0.0029 m
+[mission_node-4] [INFO] [1789014589.556517894] [rafeeq_mission]: [STATE] ARM_PREGRASP  (t+61.1 s)
+[manipulation_node-3] [INFO] [1789014605.916860947] [rafeeq_manipulation]: arm_pregrasp [6] done
+[mission_node-4] [INFO] [1789014606.436683572] [rafeeq_mission]: [STATE] NAV_GRASP  (t+69.3 s)
+[navigation_node-2] [INFO] [1789014606.437447130] [rafeeq_navigation]: goal: world (+2.38, +0.58, +0.0 deg)
+[navigation_node-2] [INFO] [1789014625.938836626] [rafeeq_navigation]: reached world (+2.383, +0.583), 0.020 m and 0.0 deg of residual error
+[mission_node-4] [INFO] [1789014626.440640414] [rafeeq_mission]: [STATE] REFINE  (t+77.1 s)
+[manipulation_node-3] [INFO] [1789014629.629903516] [rafeeq_manipulation]: refine_grasp [7] done: refine_step=0.141
+[mission_node-4] [INFO] [1789014630.162238370] [rafeeq_mission]:   refine_step=0.141
+[mission_node-4] [INFO] [1789014630.162503823] [rafeeq_mission]: [STATE] CLOSE_GRASP  (t+78.5 s)
+[manipulation_node-3] [INFO] [1789014641.302329910] [rafeeq_manipulation]: close_grasp [8] done: holding=book_col_2_row_3_green pad_gap=0.0160
+[mission_node-4] [INFO] [1789014641.573779003] [rafeeq_mission]:   holding=book_col_2_row_3_green pad_gap=0.0160
+[mission_node-4] [INFO] [1789014641.574035230] [rafeeq_mission]: [STATE] LIFT  (t+82.3 s)
+[manipulation_node-3] [ERROR] [1789014648.032897951] [rafeeq_manipulation]: lift [9] FAILED: retention after lift check failed: the fingertips are no longer in contact with a book - it has been dropped
+[mission_node-4] [ERROR] [1789014648.302091041] [rafeeq_mission]: MISSION FAILED in LIFT: retention after lift check failed: the fingertips are no longer in contact with a book - it has been dropped
+[mission_node-4] [INFO] [1789014648.302451111] [rafeeq_mission]: [STATE] FAILED  (t+84.7 s)
+[mission_node-4] [INFO] [1789014648.303000821] [rafeeq_mission]: trial record -> /opt/erc_ws/src/results/trial_T04_seed404_col5_green.json
+[mission_node-4] [INFO] [1789014648.303199683] [rafeeq_mission]: 
 [mission_node-4] ================================================================
 [mission_node-4] RAFEEQ PRACTICE SCORE ESTIMATE (not an official result)
 [mission_node-4] ================================================================
@@ -93,7 +87,7 @@
 [mission_node-4] collision penalty (0 event(s))                  -0.0
 [mission_node-4] ESTIMATED TOTAL                                  6.0   (max 19 / 17 with a drop)
 [mission_node-4] ================================================================
-[mission_node-4] [ERROR] [1789010056.564457150] [rafeeq_mission]: 
+[mission_node-4] [ERROR] [1789014648.303373735] [rafeeq_mission]: 
 [mission_node-4] ==================================================================
-[mission_node-4] RUN T04_seed404_col5_green FAILED after 91.7 s: the book was lost during extraction: retention check check failed: the fingertips are no longer in contact with a book - it has been dropped
+[mission_node-4] RUN T04_seed404_col5_green FAILED after 84.7 s: retention after lift check failed: the fingertips are no longer in contact with a book - it has been dropped
 [mission_node-4] ==================================================================

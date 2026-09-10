@@ -629,6 +629,67 @@ class GraspPlanner(object):
                 worst = (name, depth)
         return worst
 
+    #: How far a link that is not part of the gripper must stay from the target
+    #: book.  The clearance model walks link origins, so the link's own 0.05 m
+    #: radius has to come out of any gap first; the rest is the error in a
+    #: measured book position, which is a few centimetres.  At the bare link
+    #: radius this gate passes the very plan that collided - a 0.065 m gap is
+    #: 0.015 m of real clearance - so it is set to twice the radius, which
+    #: rejects that plan and selects one measured at 0.179 m on the same book.
+    BOOK_MARGIN = 2.0 * LINK_RADIUS
+    #: Base positions sampled along the advance.  The worst moment is not the
+    #: end: the wrist passes the book on its way in and is clear again once it
+    #: is behind it.
+    ADVANCE_SAMPLES = 24
+
+    @staticmethod
+    def book_intrusion(point, centre, margin):
+        """How far ``point`` is inside the book at ``centre``, grown by
+        ``margin``.  Zero or less means clear.
+
+        The book is a box: 0.16 m deep, a 0.03 m spine and 0.25 m tall.
+        """
+        half = (arena.BOOK_DEPTH / 2.0, arena.BOOK_SPINE_W / 2.0,
+                arena.BOOK_SPINE_H / 2.0)
+        gap = max(abs(point[i] - centre[i]) - (half[i] + margin)
+                  for i in range(3))
+        return -gap
+
+    def book_offender(self, q, base_xy, base_yaw, target, advance):
+        """Deepest intrusion into the target book by a link that is not the
+        gripper, over the whole base advance.
+
+        The gripper has to touch the book - that is the point - so the pads,
+        the fingers and the tool and wrist frames they hang off are exempt.
+        Everything behind them is not.  ``arm_right_6_link`` sits 0.228 m
+        deeper into the shelf than the grasping point and passes the book on
+        the way in; on the chosen plan it cleared the box by 0.065 m, less
+        than its own 0.05 m radius plus the error in a measured book position,
+        and the simulator reported it striking the book on two of five trials -
+        knocking the target over before the fingers ever arrived.
+
+        Returns ``(link_name, penetration_metres)`` or ``None``.
+        """
+        centre = tuple(target)
+
+        frames = self.chain.link_frames(np.asarray(q, float))
+        worst = None
+        for name, T in frames:
+            if (name.startswith('gripper_') or name.endswith('_tool_link')
+                    or name.endswith('_7_link')):
+                continue
+            local = T[:3, 3]
+            for step in range(self.ADVANCE_SAMPLES + 1):
+                frac = step / float(self.ADVANCE_SAMPLES)
+                back = advance * (1.0 - frac)
+                where = (base_xy[0] - back * math.cos(base_yaw),
+                         base_xy[1] - back * math.sin(base_yaw))
+                p = base_to_world(local, where, base_yaw)
+                depth = self.book_intrusion(p, centre, self.BOOK_MARGIN)
+                if depth > 0.0 and (worst is None or depth > worst[1]):
+                    worst = (name, depth)
+        return worst
+
     # -- shelf clearance -------------------------------------------------
 
     #: Smallest gap we will accept between the gripper body and a shelf board.
@@ -824,7 +885,21 @@ class GraspPlanner(object):
 
                 info['height_offset'] = offset
                 info['approach_tilt_deg'] = tilt_deg
-                depth = info.get('shelf_penetration', 0.0)
+
+                # The shelf is not the only thing in the way: the book itself
+                # is, and the arm has to pass it to reach it.  Ranking on shelf
+                # penetration alone always chose the first tilt tried, which
+                # scored a clean zero against the shelf and then took the wrist
+                # past the book with 0.065 m to spare - less than the link's
+                # own radius.  Measured on the same book, tilt +70 with the
+                # opposite roll clears it by 0.179 m for the same clean zero.
+                book = self.book_offender(
+                    q, base_xy, base_yaw, (tx, ty, tz), self.PREGRASP_BACKOFF)
+                book_depth = 0.0 if book is None else book[1]
+                info['book_penetration'] = book_depth
+                info['book_link'] = None if book is None else book[0]
+
+                depth = max(info.get('shelf_penetration', 0.0), book_depth)
                 if best is None or depth < best[2]:
                     best = (q, info, depth)
                 if depth <= self.ACCEPT_PENETRATION:
@@ -881,12 +956,14 @@ class GraspPlanner(object):
         self.log(
             'grasp plan: finger axis {}y, grasp {:.3f} m up the spine, torso '
             '{:.3f} m, IK error {:.4f} m, base approach {:.2f} m, retreat '
-            '{:.2f} m, tilt {:+d} deg, predicted shelf intrusion {:.3f} m{}'
+            '{:.2f} m, tilt {:+d} deg, predicted shelf intrusion {:.3f} m, '
+            'book intrusion {:.3f} m{}'
             .format(
                 '+' if sign > 0 else '-', info['height_offset'], q_grasp[0],
                 info['position_error'], plan.approach_distance,
                 plan.retreat_distance, info['approach_tilt_deg'],
                 info.get('shelf_penetration', 0.0),
+                info.get('book_penetration', 0.0),
                 '' if q_lift is not None else ', no lift (unreachable)'))
         return plan
 

@@ -614,3 +614,79 @@ def test_both_tucks_keep_the_grippers_behind_the_base():
     for name in ('tucked', 'tucked_left'):
         assert poses[name][1] < -1.5, (
             '{} no longer folds the shoulder back'.format(name))
+
+
+# --------------------------------------------------------------------------
+# Passing the book on the way to grasping it
+# --------------------------------------------------------------------------
+#
+# T02 and T05 of the recorded batch each reported arm_right_6_link striking the
+# *target book* during NAV_GRASP - the wrist knocking the book over before the
+# fingers arrived.  The arm is solved once and held rigid while the base drives
+# in, so the whole approach is that one posture swept along the shelf normal,
+# and the wrist sits 0.228 m deeper into the shelf than the grasping point: it
+# passes the book on the way past.
+#
+# The planner never looked.  It ranked candidates on shelf penetration alone,
+# took the first tilt that scored a clean zero, and that plan cleared the book
+# by 0.065 m - less than the link's own 0.05 m radius plus the error in a
+# measured book position.  On the same book, tilt +70 with the opposite wrist
+# roll clears it by 0.179 m for the same clean zero against the shelf.
+
+
+def _intrusion(point, centre, margin):
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    return grasp_mod.GraspPlanner.book_intrusion(point, centre, margin)
+
+
+def test_the_margin_covers_the_link_radius_and_then_some():
+    """A gap smaller than the link's radius is not a gap."""
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    assert grasp_mod.GraspPlanner.BOOK_MARGIN >= (
+        2.0 * grasp_mod.GraspPlanner.LINK_RADIUS - 1e-9), (
+        'the clearance model walks link origins, so the margin has to carry '
+        'the link radius before it carries any measurement error')
+
+
+def test_the_plan_that_collided_is_now_rejected():
+    """0.065 m from the box was the plan the simulator reported hitting."""
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    margin = grasp_mod.GraspPlanner.BOOK_MARGIN
+    centre = (2.758, -0.997, 0.936)
+    # A wrist passing 0.065 m to the side of the spine, level with the book.
+    point = (centre[0], centre[1] + arena.BOOK_SPINE_W / 2.0 + 0.065, centre[2])
+    assert _intrusion(point, centre, margin) > 0.005, (
+        'the 0.065 m plan still passes; it is the one that struck the book')
+
+
+def test_the_clearance_that_replaced_it_is_accepted():
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    margin = grasp_mod.GraspPlanner.BOOK_MARGIN
+    centre = (2.758, -0.997, 0.936)
+    point = (centre[0], centre[1] + arena.BOOK_SPINE_W / 2.0 + 0.179, centre[2])
+    assert _intrusion(point, centre, margin) <= 0.0
+
+
+def test_a_point_well_clear_of_the_book_is_clear_on_every_axis():
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    margin = grasp_mod.GraspPlanner.BOOK_MARGIN
+    centre = (2.758, -0.997, 0.936)
+    for axis, half in ((0, arena.BOOK_DEPTH / 2.0),
+                       (1, arena.BOOK_SPINE_W / 2.0),
+                       (2, arena.BOOK_SPINE_H / 2.0)):
+        point = list(centre)
+        point[axis] += half + margin + 0.01
+        assert _intrusion(point, centre, margin) < 0.0, (
+            'clear on axis {} was reported as an intrusion'.format(axis))
+        point[axis] = centre[axis] + half + margin - 0.01
+        assert _intrusion(point, centre, margin) > 0.0
+
+
+def test_the_book_is_ranked_alongside_the_shelf_not_after_it():
+    """Ranking on the shelf alone always chose the first tilt tried."""
+    import inspect
+    grasp_mod = pytest.importorskip('rafeeq_solution.grasp')
+    src = inspect.getsource(grasp_mod.GraspPlanner.plan_grasp)
+    assert 'book_offender' in src, 'plan_grasp no longer checks the book'
+    assert "max(info.get('shelf_penetration', 0.0), book_depth)" in src, (
+        'the book has to gate acceptance, not just be recorded')

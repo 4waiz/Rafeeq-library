@@ -43,10 +43,10 @@ seeds, five different columns, all four colours.
 
 The identification rates are worth a sentence, because "5/5" on its own could
 mean the robot found *a* book. Across the five trials the measured offset of
-the chosen book from its column centre averaged **0.149 m**, largest 0.253 m,
+the chosen book from its column centre averaged **0.151 m**, largest 0.250 m,
 against an organiser jitter of ±0.25 m. A book from a neighbouring column would
 be about a metre out. Spot-checked against Gazebo ground truth on the case that
-used to fail worst: −0.253 m recorded against −0.246 m true.
+used to fail worst: −0.250 m recorded against −0.246 m true.
 
 **One thing is honestly not working, and one is costing points.**
 
@@ -56,14 +56,14 @@ used to fail worst: −0.253 m recorded against −0.246 m true.
    Everything gated on it — the grasp points, both navigation awards and the
    placement points — is **not earned**, and this repository does not claim
    them.
-2. **Collisions are down but not gone.** The tucked left arm used to clip the
-   table on every single run; that is fixed, and two of the five trials are now
-   completely clean. What remains is four contacts of two other kinds: the
-   working arm brushing a neighbouring book as it enters the shelf (2 runs),
-   and the base reversing over a book the gripper had already dropped (1 run).
-   Both are downstream of the grasp; neither is claimed as solved.
+2. **One collision left in five runs.** The tucked left arm used to clip the
+   table on every single run, and the working arm used to strike the target
+   book on its way in; both are fixed, and four of the five trials are now
+   completely clean. What remains is a single contact: the base reversing over
+   a book the gripper had already dropped. It exists only because the grasp
+   drops the book, and it is not claimed as solved.
 
-Mean estimated score across the recorded trials: **5.6 / 19**, and two of the
+Mean estimated score across the recorded trials: **5.9 / 19**, and four of the
 five are collision-free at the 6.0 that identification alone can earn.
 
 What that leaves is a working perception-to-motion pipeline and a mission that
@@ -246,7 +246,7 @@ ERC_SEED=101 ros2 launch erc_bringup simulation.launch.py
 ### Testing
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q        # 109 offline tests
+python3 -m pytest src/rafeeq_solution/test -q        # 120 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py   # 23 vision tests
 ```
 

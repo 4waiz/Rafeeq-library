@@ -7,36 +7,36 @@
   },
   "detected": {
     "bin_point_world": null,
-    "book_offset_from_column_centre": 0.1807,
+    "book_offset_from_column_centre": 0.1929,
     "book_offset_measured_against": "plate re-read from the book-scan pose",
     "book_point_world": [
-      2.757640619030307,
-      -0.9972594123448895,
-      0.9363688366201518
+      2.7593632578960454,
+      -0.9881182900806323,
+      0.9296145580393553
     ],
     "book_row": 3,
     "column_point_world": [
-      2.6769142446724215,
-      -1.1844212890483365,
-      2.2593313176060947
+      2.6775158504316097,
+      -1.1820029401959897,
+      2.2596975637896852
     ],
     "physical_column_slot": 4
   },
   "evidence": {
-    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260910_031659_693.png",
-    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260910_031621_247.png"
+    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260910_044026_786.png",
+    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260910_043255_289.png"
   },
-  "failure_reason": "navigation failed while advancing onto the book",
+  "failure_reason": "grasp failed: verify grasp check failed: the fingers closed to 0.0140 m (pad gap 0.0160 m) with no contact on any book - the book was missed",
   "grasp": {
-    "attempts": 0,
+    "attempts": 3,
     "held_width": 0.0,
     "plan": {
-      "grasp": "2.2350,-1.0165,0.0000",
-      "ik_error": "0.0029",
-      "retreat": "1.8150,-1.0165,0.0000",
-      "roll": "-y",
-      "spine_offset": "+0.036",
-      "stage": "1.4050,-1.0165,0.0000"
+      "grasp": "2.2589,-0.9882,-0.0000",
+      "ik_error": "0.0030",
+      "retreat": "1.8389,-0.9882,-0.0000",
+      "roll": "+y",
+      "spine_offset": "-0.054",
+      "stage": "1.4289,-0.9882,-0.0000"
     }
   },
   "outcome": "failed",
@@ -48,22 +48,9 @@
   "score": {
     "collisions": {
       "cooldown_seconds": 1.0,
-      "count": 2,
-      "events": [
-        {
-          "link": "tiago_pro::arm_right_6_link::arm_right_6_link_collision",
-          "object": "book_col_4_row_4_red",
-          "state": "NAV_GRASP",
-          "time": 92.282
-        },
-        {
-          "link": "tiago_pro::arm_right_3_link::arm_right_3_link_collision",
-          "object": "erc_shelf",
-          "state": "NAV_GRASP",
-          "time": 94.7
-        }
-      ],
-      "penalty": 1.0,
+      "count": 0,
+      "events": [],
+      "penalty": 0.0,
       "penalty_per_event": 0.5
     },
     "disclaimer": "Local estimate. Gentle-vs-drop classification and collision intent are judge decisions; see docs for the rule used here.",
@@ -84,7 +71,7 @@
       "column_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260910_031621_247.png",
+        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260910_043255_289.png",
         "points": 2.0
       },
       "column_topic": {
@@ -114,7 +101,7 @@
       "row_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260910_031659_693.png",
+        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260910_043333_942.png",
         "points": 2.0
       },
       "row_topic": {
@@ -124,25 +111,28 @@
         "points": 1.0
       }
     },
-    "total_estimate": 5.0
+    "total_estimate": 6.0
   },
   "timing": {
-    "simulated_seconds_total": 164.39,
+    "simulated_seconds_total": 317.68,
     "stage_seconds": {
-      "ARM_PREGRASP": 9.6,
-      "BOOK_POSE": 4.2,
-      "COLUMN_REF": 0.6,
-      "COLUMN_REF_POSE": 2.6,
-      "DETECT_BOOK": 3.4,
+      "ARM_PREGRASP": 41.0,
+      "BOOK_POSE": 12.6,
+      "CLOSE_GRASP": 11.4,
+      "COLUMN_REF": 1.8,
+      "COLUMN_REF_POSE": 30.0,
+      "DETECT_BOOK": 5.2,
       "DETECT_COLUMN": 2.6,
       "FACE_SHELF": 4.2,
       "HOME": 21.0,
       "NAV_COLUMN": 9.6,
-      "NAV_GRASP": 90.2,
-      "NAV_STAGE": 5.0,
-      "PLAN_GRASP": 6.4,
-      "SCAN_POSE": 4.0,
-      "WAIT_READY": 0.99
+      "NAV_GRASP": 22.8,
+      "NAV_STAGE": 17.6,
+      "PLAN_GRASP": 111.6,
+      "RECOVER": 12.4,
+      "REFINE": 4.2,
+      "SCAN_POSE": 4.2,
+      "WAIT_READY": 1.08
     }
   }
 }

@@ -20,6 +20,7 @@ python3 tools/diagnostics/<script>.py
 | `grab.py` | Grabs a live frame and runs the book detector, showing which blobs pass each filter | perception tuning |
 | `layout.py` | Ground-truth colour, row and position of the books in one column | trial analysis |
 | `tuck_clearance.py` | Where every arm link sits in the base frame for the drive tucks, and the closest each comes to the table over the turn to face the shelf | [`docs/handover.md`](../../docs/handover.md) |
+| `book_clearance.py` | Clearance from the target book for every approach tilt and wrist roll, over the whole base advance | [`docs/handover.md`](../../docs/handover.md) |
 | `staged_grasp.py` | Drives the base and arm through the whole grasp sequence, logging contacts and the book's displacement | [`docs/grasp_blocker.md`](../../docs/grasp_blocker.md) |
 
 ## On ground truth

@@ -60,6 +60,7 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 | Book acquired, retained, transported | Same | Contact does not survive the lift or retreat | **blocked** — see [`grasp_blocker.md`](grasp_blocker.md) |
 | Bin visually identified, not substituted with a nominal pose | `_do_bin` requires size, shape, solidity **and** a deprojected position inside the bin's real bounds; failure fails the state | `test_mission_flow.py::test_bin_detection_failure_does_not_fall_back_to_a_nominal_pose` | implemented, unverified (never reached in a live run) |
 | Delivery verified on `/bin_contacts`, not inferred | `scoring.DeliveryMonitor` ignores the permanent bin↔table contact and fires only on a *book* | `test_scoring.py::test_bin_resting_on_the_table_is_not_a_delivery` | implemented, unverified |
+| Arm clears the target book on the way in | `grasp.book_offender` sweeps the whole base advance; acceptance takes the worse of the shelf and book figures. Margin is twice the link radius, since the model walks link origins | Enumerated every tilt and roll for the book that collided: chosen plan went from 0.065 m to 0.179 m of clearance. `test_contracts.py::test_the_plan_that_collided_is_now_rejected` | **verified** |
 | Bounded retries and explicit failure | `grasp_attempts` cap, `RECOVER` state, `FAILED` is terminal and reported | Live: 3 grasp attempts then `FAILED` | **verified** |
 | Stale results cannot advance a new state | Sequence numbers on every manipulation reply; perception clears votes on mode change | `test_mission_flow.py::test_a_reply_to_an_older_command_is_ignored` | **verified** |
 
@@ -91,7 +92,7 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 | `docs/measured_environment.md` | **verified** |
 | `docs/competition_readiness.md` (this file) | **verified** |
 | `docs/grasp_blocker.md` | **verified** |
-| Offline test suite (109 pytest + 23 vision, pyflakes clean) | **verified** |
+| Offline test suite (120 pytest + 23 vision, pyflakes clean) | **verified** |
 | Documented trials with machine-readable records | **5 recorded** in `results/` — five layout seeds, five columns, all four colours. Column and row identified, published and photographed on all five. |
 | Root `README.md` rewrite | **verified** |
 | `report/Rafeeq_ERC2026_Phase1_Report.pdf` | **verified** — 5 body pages + title, 0.09 MB, every figure read from `results/` at build time |
@@ -106,15 +107,17 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
 1. **The grasp does not retain the book.** Everything downstream of it — the
    grasp points, both navigation awards, and the placement points — is
    therefore unearned. Characterised in [`grasp_blocker.md`](grasp_blocker.md).
-2. ~~**A left-arm collision at start-up.**~~ **Fixed.** The tucked left arm
-   swept within 0.084 m of the table as the base turned - less than the
-   link's own radius - and clipped it on all five recorded trials.
-   `tucked_left` is now the right arm's tuck mirrored, which takes the worst
-   approach to 0.425 m; the contact does not occur in any of the five
-   re-run trials, and two of them are now collision-free. Four contacts of
-   two other kinds remain: the working arm brushing a neighbouring book as
-   it enters the shelf, and the base reversing over a dropped book. Both
-   are downstream of the grasp and both are open.
+2. ~~**A left-arm collision at start-up.**~~ ~~**The working arm striking the
+   target book.**~~ **Both fixed.** The tucked left arm swept within 0.084 m
+   of the table and clipped it on all five trials; `tucked_left` is now the
+   right arm's tuck mirrored, taking the worst approach to 0.425 m. The
+   working arm then turned out to pass the target book with 0.065 m to
+   spare - less than its own link radius - because the planner ranked
+   candidates on shelf clearance alone; the book is now in the clearance
+   model and the chosen plan clears it by 0.179 m. Across five re-run
+   trials, neither contact occurs and four runs are collision-free. One
+   contact remains in the set: the base reversing over a book the gripper
+   had already dropped, which exists only because the grasp drops it.
 3. **The demonstration video cannot honestly be produced yet**, because there
    is no successful run to record.
 4. Bin detection and delivery verification are implemented and unit-tested but
@@ -123,9 +126,9 @@ Ubuntu 22.04.5 / ROS 2 Humble / Gazebo Sim 8.15.0, measured real-time factor
    from a neighbouring column, confidently and repeatably, because it
    compared measurements against positions the robot only believed. Now
    5/5 across five seeds, with the measured offset from the column centre
-   averaging 0.149 m against an organiser jitter of ±0.25 m — a
+   averaging 0.151 m against an organiser jitter of ±0.25 m — a
    neighbouring column would be about 1 m out. Ground-truth spot check on
-   the worst previous case: −0.253 m recorded against −0.246 m true.
+   the worst previous case: −0.250 m recorded against −0.246 m true.
    See [`odometry_drift.md`](odometry_drift.md).
 6. **Wheel odometry drifts far enough to matter** — 0.29 m and 0.18 rad over a
    single traverse, measured against ground truth. Several checks were made
