@@ -99,6 +99,9 @@ class MissionNode(Node):
         # --- publishers ---------------------------------------------------
         self.pub_goal = self.create_publisher(
             PoseStamped, '/rafeeq/nav/goal', 10)
+        # Asks the navigation node to hold the *next* goal to millimetres.
+        self.pub_precise = self.create_publisher(
+            Bool, '/rafeeq/nav/precise', 10)
         self.pub_cancel = self.create_publisher(
             Empty, '/rafeeq/nav/cancel', 10)
         self.pub_mode = self.create_publisher(
@@ -424,8 +427,18 @@ class MissionNode(Node):
                     self.timeouts['manip']))
         return None
 
-    def goto(self, wx, wy, wyaw):
+    def goto(self, wx, wy, wyaw, precise=False):
+        """Drive to a world pose.
+
+        ``precise`` asks the navigation node to hold this one goal to
+        millimetres instead of the ordinary tolerance.  Only the grasp
+        approach needs it - the gripper body clears the book's spine face by
+        0.0265 m and the pads clear the spine by 0.0128 m - and asking for it
+        everywhere makes long traverses fight the obstacle checker rather than
+        arrive.
+        """
         self.nav_status = 'moving'
+        self.pub_precise.publish(Bool(data=bool(precise)))
         goal = PoseStamped()
         goal.header.frame_id = 'world'
         goal.header.stamp = self.get_clock().now().to_msg()
@@ -702,7 +715,45 @@ class MissionNode(Node):
                   self.book_point[1], 0.0)
 
     def check_nav_stage(self):
-        return self.nav_gate('PLAN_GRASP', 'moving to the staging pose')
+        return self.nav_gate('REFRESH_BOOK', 'moving to the staging pose')
+
+    def enter_refresh_book(self):
+        """Measure the book again from where the arm will actually reach it.
+
+        The plan is built on a book position, and that position is only as
+        good as the odometry between measuring it and grasping it.  Measured
+        against ground truth, a book really at y = -0.154 was reported at
+        -0.337 - and its offset *from the plate* was right to 4 mm, so the
+        perception is sound and the 0.183 m is drift.  Drift cancels only if
+        it does not change between the measurement and the grasp, and it does
+        change, over the metre of driving in between.  What is left over is
+        enough to park the pads beside the book instead of around it.
+
+        So the book is measured once more here, at the staging pose, with only
+        the final advance still to come.  If the look fails, the earlier
+        measurement stands and the run carries on as it did before.
+        """
+        self.book_point = None
+        self.set_mode('book')
+
+    def check_refresh_book(self):
+        if self.book_point is not None:
+            self.get_logger().info(
+                're-measured the book from the staging pose at world '
+                '({:+.3f}, {:+.3f}, {:.3f})'.format(*self.book_point))
+            return 'PLAN_GRASP'
+
+        if self.elapsed <= self.timeouts['detect']:
+            return None
+
+        if self.book_point_best is not None:
+            self.book_point = self.book_point_best
+            self.get_logger().warn(
+                'could not re-measure the book from the staging pose; '
+                'planning on the earlier measurement, which is a metre of '
+                'driving old')
+            return 'PLAN_GRASP'
+        return self.fail('lost the book before the grasp could be planned')
 
     def enter_plan_grasp(self):
         advance = arena.ARM_TRANSIT_STANDOFF - arena.GRASP_STANDOFF
@@ -750,7 +801,7 @@ class MissionNode(Node):
 
     def enter_nav_grasp(self):
         x, y, yaw = self._pose_from_plan('grasp')
-        self.goto(x, y, yaw)
+        self.goto(x, y, yaw, precise=True)
 
     def check_nav_grasp(self):
         return self.nav_gate('REFINE', 'advancing onto the book')

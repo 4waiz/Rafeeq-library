@@ -706,6 +706,89 @@ class ManipulationNode(Node):
         """
         return q <= arena.GRIPPER_CLOSE + arena.GRIPPER_EMPTY_EPS
 
+    #: How far the fingers move between contact checks while closing.  Small
+    #: enough that they stop before driving through the book, large enough
+    #: that the close does not take all day.
+    CLOSE_INCREMENT = 0.004
+    #: How long to let each increment settle before judging contact.
+    CLOSE_DWELL = 0.6
+    #: How much further to close once a pad has reached the book.  Enough to
+    #: load the friction surfaces, far short of the 0.014 m of interference
+    #: that squeezed the book out of the jaw entirely.
+    CLOSE_SQUEEZE = 0.004
+
+    def both_pads_on_same_book(self, window=0.8):
+        """The book both fingertips are currently touching, or None."""
+        now = self.now()
+        seen = {}
+        for tag, (t, book) in self._finger_contact.items():
+            if now - t <= window and 'fingertip' in tag:
+                seen.setdefault(book, set()).add(tag)
+        for book, tags in seen.items():
+            if len(tags) >= 2:
+                return book
+        return None
+
+    def close_on_contact_step(self, name='gripper->close', timeout=40.0):
+        """Close the fingers and stop the moment both pads are on the book.
+
+        Commanding the closed position in one move drives the fingers *through*
+        the book.  They are position controlled, so they keep going, and a
+        rigid box between two closing walls gets squeezed out rather than held:
+        measured, every grasp reached the commanded 0.016 m gap on a 0.030 m
+        spine, which is only possible once the book has left the jaw.  What was
+        being reported as a grasp was the book resting against one pad's
+        outside face, which is why it never survived the lift.
+
+        Stepping the fingers in and watching the fingertip contacts stops where
+        the grip actually is, with both pads on the spine and the book still
+        between them.
+        """
+        state = {}
+
+        def start():
+            state['target'] = arena.GRIPPER_OPEN
+            state['t'] = self.now()
+            self.send_gripper(state['target'])
+
+        def done():
+            now = self.now()
+            # Stop on the *first* pad to reach the book, not both.  The
+            # simulator reports contact points from one fingertip at a time
+            # even when both are pressing - see `gripped_book` - so waiting for
+            # both means never stopping, which is what drove the fingers
+            # straight through the book on every previous attempt.
+            touched = self.gripped_book(window=0.8)
+            if touched is not None and 'squeeze_from' not in state:
+                state['squeeze_from'] = state['target']
+                state['target'] = max(arena.GRIPPER_CLOSE,
+                                      state['target'] - self.CLOSE_SQUEEZE)
+                state['t'] = now
+                self.send_gripper(state['target'])
+                return False
+            if 'squeeze_from' in state and now - state['t'] >= self.CLOSE_DWELL:
+                self.job_detail['closed_on'] = touched or '?'
+                self.job_detail['first_touch_gap'] = '{:.4f}'.format(
+                    arena.pad_gap(state['squeeze_from']))
+                self.job_detail['close_gap'] = '{:.4f}'.format(
+                    arena.pad_gap(state['target']))
+                return True
+            if now - state['t'] < self.CLOSE_DWELL:
+                return False
+            if state['target'] <= arena.GRIPPER_CLOSE + 1e-6:
+                # Nothing ever came between the pads.  Let the verify step say
+                # so rather than pretending this was a grasp.
+                self.job_detail['close_gap'] = '{:.4f}'.format(
+                    arena.pad_gap(state['target']))
+                return True
+            state['target'] = max(arena.GRIPPER_CLOSE,
+                                  state['target'] - self.CLOSE_INCREMENT)
+            state['t'] = now
+            self.send_gripper(state['target'])
+            return False
+
+        return Step(name, start, done, timeout)
+
     def gripper_step(self, name, value, settle=2.0, timeout=15.0,
                      expect_stall=False, min_gap=None):
         """A :class:`Step` that commands the gripper and confirms the outcome.
@@ -870,8 +953,7 @@ class ManipulationNode(Node):
             return [self.gripper_step('gripper->open', arena.GRIPPER_OPEN,
                                   min_gap=OPEN_GAP_REQUIRED)]
         if spec in ('close', 'closed'):
-            return [self.gripper_step(
-                'gripper->close', arena.GRIPPER_CLOSE, expect_stall=True)]
+            return [self.close_on_contact_step()]
         return [self.gripper_step('gripper->{}'.format(spec), float(spec))]
 
     def build_release(self, args):
@@ -1017,8 +1099,7 @@ class ManipulationNode(Node):
     def build_close_grasp(self, args):
         """Close on the book and prove something book-shaped is held."""
         return [
-            self.gripper_step('gripper->close', arena.GRIPPER_CLOSE,
-                              settle=2.5, expect_stall=True),
+            self.close_on_contact_step(),
             self._verify_grasp_step(),
         ]
 

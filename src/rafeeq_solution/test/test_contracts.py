@@ -828,8 +828,9 @@ def test_the_lateral_tolerance_is_inside_the_fingers_clearance():
     import re
     path = os.path.join(PKG, 'rafeeq_solution', 'navigation_node.py')
     source = open(path, encoding='utf-8').read()
-    m = re.search(r"declare_parameter\('lateral_tolerance',\s*([0-9.]+)\)",
-                  source)
+    m = re.search(
+        r"declare_parameter\('precise_lateral_tolerance',\s*([0-9.]+)\)",
+        source)
     assert m, 'the lateral tolerance is gone; the fingers will clip the spine'
     lateral = float(m.group(1))
     tightest_finger_clearance = 0.0128
@@ -852,3 +853,31 @@ def test_arrival_is_judged_along_and_across_the_heading_separately():
     assert 'self.lat_tol' in source and 'self.pos_tol' in source, (
         'arrival is back to a single radial tolerance')
     assert 'across' in source and 'along' in source
+
+
+def test_only_the_grasp_approach_asks_for_millimetre_precision():
+    """Holding every leg to millimetres is not free.
+
+    Tightening the tolerance globally made a long traverse fight the obstacle
+    checker instead of arriving: a trial failed with "the path is blocked while
+    driving to column 2 and did not clear" that had never failed that way.  The
+    precision is requested per goal, and only the grasp approach needs it.
+    """
+    import ast
+    path = os.path.join(PKG, 'rafeeq_solution', 'mission_node.py')
+    tree = ast.parse(open(path, encoding='utf-8').read())
+    asked = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for call in ast.walk(node):
+            if not isinstance(call, ast.Call):
+                continue
+            if getattr(call.func, 'attr', None) != 'goto':
+                continue
+            for kw in call.keywords:
+                if kw.arg == 'precise' and getattr(kw.value, 'value', False):
+                    asked.add(node.name)
+    assert asked == {'enter_nav_grasp'}, (
+        'precision is requested by {} - it costs convergence time on every '
+        'leg that asks for it'.format(sorted(asked) or 'nothing'))

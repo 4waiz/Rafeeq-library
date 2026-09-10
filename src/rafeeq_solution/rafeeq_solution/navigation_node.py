@@ -40,7 +40,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy, HistoryPolicy, \
     ReliabilityPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Empty, String
+from std_msgs.msg import Bool, Empty, String
 
 from . import arena
 
@@ -112,14 +112,15 @@ class NavigationNode(Node):
         self.declare_parameter('max_angular', 0.6)
         self.declare_parameter('kp_linear', 1.1)
         self.declare_parameter('kp_angular', 1.6)
-        # Tolerance along the goal heading.  0.02 m was too loose for the
-        # grasp approach: the gripper body clears the book's spine face by
-        # 0.0265 m, so a base that stops 0.02 m short and lets the arm make it
-        # up drives the body into the book, while holding the arm back by the
-        # same 0.02 m leaves the pads short of it.  Both margins are within a
-        # couple of centimetres of each other, so the base has to actually
-        # arrive.
-        self.declare_parameter('position_tolerance', 0.006)
+        self.declare_parameter('position_tolerance', 0.02)
+        # What the grasp approach asks for instead.  It is the only leg that
+        # needs this: the gripper body clears the book's spine face by 0.0265 m
+        # and the pads clear the spine by 0.0128 m, so a base that stops 0.02 m
+        # out drives the body into the book or closes the pads beside it.  The
+        # rest of the run does not care, and holding every leg to millimetres
+        # makes long traverses fight the obstacle checker instead of arriving.
+        self.declare_parameter('precise_position_tolerance', 0.006)
+        self.declare_parameter('precise_lateral_tolerance', 0.008)
         # Tolerance *across* the goal heading, which is a much tighter
         # constraint than along it.  Driving into a shelf row, an error along
         # the approach only changes how deep the pads grip - they span 0.057 m,
@@ -129,7 +130,11 @@ class NavigationNode(Node):
         # the base could legitimately "arrive" with a finger already touching
         # the book, then drag it 0.047 m deeper as it finished advancing.  That
         # is what put the book out of the jaw before the gripper ever closed.
-        self.declare_parameter('lateral_tolerance', 0.008)
+        # Ordinary goals are as forgiving across the heading as along it.
+        # Only the grasp approach needs better, and it asks for it per goal -
+        # holding every leg to millimetres made a long traverse fight the
+        # obstacle checker instead of arriving.
+        self.declare_parameter('lateral_tolerance', 0.02)
         self.declare_parameter('yaw_tolerance', 0.02)
         self.declare_parameter('approach_slowdown', 0.35)
         self.declare_parameter('obstacle_stop_distance', 0.42)
@@ -149,6 +154,12 @@ class NavigationNode(Node):
         self.kp_angular = float(self.get_parameter('kp_angular').value)
         self.pos_tol = float(self.get_parameter('position_tolerance').value)
         self.lat_tol = float(self.get_parameter('lateral_tolerance').value)
+        self.precise_pos_tol = float(
+            self.get_parameter('precise_position_tolerance').value)
+        self.precise_lat_tol = float(
+            self.get_parameter('precise_lateral_tolerance').value)
+        #: Set by /rafeeq/nav/precise for the next goal only, then cleared.
+        self.precise_next = False
         self.yaw_tol = float(self.get_parameter('yaw_tolerance').value)
         self.slowdown = float(self.get_parameter('approach_slowdown').value)
         self.stop_distance = float(
@@ -165,6 +176,7 @@ class NavigationNode(Node):
         self.goal = None
         self.goal_world = None
         self.goal_started = None
+        self.goal_precise = False
         self.state = 'idle'
 
         # Mount yaw of each lidar in the base frame, from the measured TF:
@@ -190,6 +202,11 @@ class NavigationNode(Node):
         self.trail.header.frame_id = 'odom'
 
         self.create_subscription(Odometry, '/odom', self.on_odom, 20)
+        # Asking for millimetre precision on the next goal only.  See
+        # `precise_position_tolerance`.
+        self.create_subscription(
+            Bool, '/rafeeq/nav/precise',
+            lambda m: setattr(self, 'precise_next', bool(m.data)), 10)
         self.create_subscription(
             LaserScan, '/scan_front_raw', self.on_front,
             qos_profile_sensor_data)
@@ -273,6 +290,13 @@ class NavigationNode(Node):
             return
 
         self.goal = (ox, oy, oyaw)
+        self.goal_precise = self.precise_next
+        self.precise_next = False
+        if self.goal_precise:
+            self.get_logger().info(
+                'this goal is the grasp approach: holding to {:.3f} m along '
+                'and {:.3f} m across the heading'.format(
+                    self.precise_pos_tol, self.precise_lat_tol))
         self.goal_started = self.now()
         self.state = 'moving'
 
@@ -325,7 +349,10 @@ class NavigationNode(Node):
         along = ex_odom * cg + ey_odom * sg
         across = -ex_odom * sg + ey_odom * cg
 
-        if (abs(along) <= self.pos_tol and abs(across) <= self.lat_tol
+        pos_tol = self.precise_pos_tol if self.goal_precise else self.pos_tol
+        lat_tol = self.precise_lat_tol if self.goal_precise else self.lat_tol
+
+        if (abs(along) <= pos_tol and abs(across) <= lat_tol
                 and abs(eyaw) <= self.yaw_tol):
             self.goal = None
             self.state = 'reached'
@@ -375,7 +402,12 @@ class NavigationNode(Node):
         # So while the across-heading error is outside tolerance, the
         # along-heading velocity is suppressed: the base corrects sideways
         # first and only then advances.
-        if abs(across) > self.lat_tol:
+        # Only on the grasp approach.  On a long traverse this deadlocks:
+        # zeroing the forward component leaves the base strafing, the obstacle
+        # checker vetoes the sideways direction, and the goal fails with "the
+        # path is blocked" - which is exactly what it did to a trial that had
+        # never failed that way before.
+        if self.goal_precise and abs(across) > lat_tol:
             along_hat = (cos_yaw * math.cos(gyaw) - sin_yaw * math.sin(gyaw),
                          sin_yaw * math.cos(gyaw) + cos_yaw * math.sin(gyaw))
             along_speed = vx * along_hat[0] + vy * along_hat[1]
