@@ -7,36 +7,36 @@
   },
   "detected": {
     "bin_point_world": null,
-    "book_offset_from_column_centre": -0.14,
+    "book_offset_from_column_centre": -0.1321,
     "book_offset_measured_against": "plate re-read from the book-scan pose",
     "book_point_world": [
-      2.7903337688651666,
-      -1.3189842687619304,
-      1.5860811593870991
+      2.813262734319342,
+      -1.3111313917998029,
+      1.5796710426586886
     ],
     "book_row": 1,
     "column_point_world": [
-      2.6775569915238226,
-      -1.1813610351089974,
-      2.259639926286357
+      2.6775644269338823,
+      -1.181363576457068,
+      2.2596431445965752
     ],
     "physical_column_slot": 4
   },
   "evidence": {
-    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260910_042512_673.png",
-    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260910_042435_255.png"
+    "book_image": "/opt/erc_ws/src/erc_images/target_book_20260910_080231_780.png",
+    "column_image": "/opt/erc_ws/src/erc_images/shelf_column_20260910_080157_967.png"
   },
-  "failure_reason": "the book was lost during extraction: retention check check failed: the fingertips are no longer in contact with a book - it has been dropped",
+  "failure_reason": "retention after lift check failed: the fingertips are no longer in contact with a book - it has been dropped",
   "grasp": {
     "attempts": 0,
     "held_width": 0.0,
     "plan": {
-      "grasp": "2.2631,-1.3005,0.0000",
+      "grasp": "2.2034,-1.2941,0.0000",
       "ik_error": "0.0029",
-      "retreat": "1.8431,-1.3005,0.0000",
+      "retreat": "1.7834,-1.2941,0.0000",
       "roll": "+y",
       "spine_offset": "-0.054",
-      "stage": "1.4331,-1.3005,0.0000"
+      "stage": "1.4534,-1.2941,0.0000"
     }
   },
   "outcome": "failed",
@@ -71,7 +71,7 @@
       "column_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260910_042435_255.png",
+        "evidence": "/opt/erc_ws/src/erc_images/shelf_column_20260910_080157_967.png",
         "points": 2.0
       },
       "column_topic": {
@@ -101,7 +101,7 @@
       "row_image": {
         "available": 2.0,
         "awarded": true,
-        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260910_042512_673.png",
+        "evidence": "/opt/erc_ws/src/erc_images/target_book_20260910_080231_780.png",
         "points": 2.0
       },
       "row_topic": {
@@ -114,27 +114,25 @@
     "total_estimate": 6.0
   },
   "timing": {
-    "simulated_seconds_total": 89.37,
+    "simulated_seconds_total": 83.28,
     "stage_seconds": {
-      "ARM_PREGRASP": 7.6,
+      "ARM_PREGRASP": 7.8,
       "BOOK_POSE": 4.2,
       "CLOSE_GRASP": 3.8,
       "COLUMN_REF": 0.6,
       "COLUMN_REF_POSE": 2.6,
-      "CONFIRM_HOLD": 1.2,
-      "DETECT_BOOK": 3.0,
-      "DETECT_COLUMN": 2.6,
+      "DETECT_BOOK": 3.4,
+      "DETECT_COLUMN": 2.8,
       "FACE_SHELF": 4.2,
       "HOME": 21.0,
       "LIFT": 2.4,
       "NAV_COLUMN": 9.6,
-      "NAV_GRASP": 7.8,
-      "NAV_STAGE": 4.6,
-      "PLAN_GRASP": 1.6,
-      "REFINE": 1.2,
-      "RETREAT": 6.2,
+      "NAV_GRASP": 7.4,
+      "NAV_STAGE": 4.8,
+      "PLAN_GRASP": 1.8,
+      "REFINE": 1.4,
       "SCAN_POSE": 4.2,
-      "WAIT_READY": 0.97
+      "WAIT_READY": 1.28
     }
   }
 }

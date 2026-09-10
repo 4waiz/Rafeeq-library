@@ -57,13 +57,13 @@ organiser commits (`ae4d1d9`, `51486d7`, `0a09806`).
 | Book evidence image shows the book and its row | ☑ verified | `erc_images/target_book_*.png` |
 | Evidence images committed (not gitignored) | ☑ fixed | The previous `.gitignore` excluded exactly what the rules require |
 | Machine-readable trial records | ☑ **5 of 5** | `results/*.json`, five layout seeds, five columns, all four colours. Column and row identified, published and photographed on every one. |
-| Offline tests pass | ☑ verified | 120 pytest + 23 vision, pyflakes clean |
+| Offline tests pass | ☑ verified | 131 pytest + 23 vision, pyflakes clean |
 | No credentials, caches, build products or oversized media committed | ☐ to verify | Check before tagging |
 
 ## Before publishing the release
 
 1. ☐ `git status` clean; review the full diff
-2. ☐ `python3 -m pytest src/rafeeq_solution/test -q` — all 120 pass
+2. ☐ `python3 -m pytest src/rafeeq_solution/test -q` — all 131 pass
 3. ☐ `python3 src/rafeeq_solution/scripts/test_vision_offline.py` — all pass
 4. ☐ **Fresh clone into an empty directory; `colcon build --symlink-install`; run the judges' two commands with no edits.** Attempted and abandoned: cloning this tree out of the Windows filesystem into WSL stalls on the ~5 GB of vendored packages. Verified instead, directly against the commit: all text blobs are LF, shell scripts are executable, all required files present, offline tests pass. **A real fresh-clone build is still outstanding** — run it on a Linux host where the repo lives on the native filesystem.
 5. ☐ Rebuild the report from the final trial records; check page count, size and that no link is dead

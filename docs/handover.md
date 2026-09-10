@@ -20,7 +20,7 @@ and reproducible with [`tools/diagnostics/`](../tools/diagnostics/).
 
 | | Result |
 |---|---|
-| Offline tests | **120 pytest + 23 vision**, all passing, no ROS or Gazebo needed |
+| Offline tests | **131 pytest + 23 vision**, all passing, no ROS or Gazebo needed |
 | Static analysis | pyflakes clean, enforced by `test_lint.py` |
 | Live trials | **5 recorded**, machine-readable, in [`results/`](../results/) |
 | Judges' launch commands | Run unmodified for every trial |
@@ -34,8 +34,9 @@ different columns, all four colours:
 |---|---|
 | Target column identified, published, evidence image | **5/5** |
 | Book row identified, published, evidence image | **5/5** |
-| Book's measured offset from its column centre | mean **0.151 m**, max **0.250 m** (organiser jitter is ±0.25 m) |
-| Reached the shelf and closed on the book | 5/5 attempted |
+| Book's measured offset from its column centre | mean **0.145 m**, max **0.254 m** (organiser jitter is ±0.25 m) |
+| Book's measured distance, against ground truth | mean error **−0.002 m**, worst 0.092 m |
+| Reached the shelf and closed on the book | **4/5 reach a real grasp** |
 | Book retained | **0/5** |
 | Delivered | **0/5** |
 | Mean estimated score | **5.9 / 19**; four of the five trials are collision-free at 6.0 |
@@ -44,7 +45,7 @@ Two of those figures are worth reading twice. Identification used to be 1 in 3;
 it is now 5 in 5, and the offsets say the *right* book is being found rather
 than merely a book — a book from a neighbouring column would be about 1 m out,
 not 0.16 m. Spot-checked against Gazebo ground truth on the case that used to
-fail worst (seed 404): the recorded offset was −0.250 m against a true −0.246 m.
+fail worst (seed 404): the recorded offset was −0.254 m against a true −0.246 m.
 
 ## The one thing that does not work
 
@@ -65,10 +66,9 @@ provided environment look responsible, both documented with evidence in
 Increasing the squeeze from 6 mm to 16 mm of interference changed nothing.
 **This is the first thing to raise with the organisers**, with the reproducer.
 
-Downstream of it, the five trials failed in two ways, both consequences:
-three closed on the book and came up empty; two lost the book to the shelf
-after a failed attempt disturbed it, and honestly reported that they could no
-longer see it rather than driving at a position it had left.
+Downstream of it, four of the five trials now reach a real grasp and lose the
+book to this, one of them only after lifting it clear. The fifth could not
+find a continuous IK solution to refine onto its book and said so.
 
 ## How the wrong-book problem was solved, because it will come back
 
@@ -170,6 +170,54 @@ more than the margin it is accepted unchanged, reporting `book intrusion
 Re-run over the five trials, neither the arm/book nor the arm/shelf contact
 occurs again.
 
+## Measuring how far away the book is
+
+Measured book x scattered by ±0.25 m against a true 2.900, and the dominant
+failure was *"the fingers closed with no contact on any book"*. Two separate
+faults sat behind it, needing opposite fixes.
+
+**The depth patch read between the book and the shelf.** Sizing the patch to
+the detection was necessary but not sufficient: even a fitted patch catches
+background at its edges, and those edge pixels come back as a blend of the two
+ranges, so a median lands on the blend. Measured against ground truth on seven
+books, a spine face really at 2.820 m came back anywhere from 2.822 m to
+2.905 m — an 0.083 m spread biased 0.04 m *behind* the surface it was supposed
+to be measuring. The object is by construction the nearest thing inside its own
+bounding box, so `patch_depth` now takes a low order statistic to find the near
+surface and averages the pixels that agree with it. On the four books of the
+target column, viewed head on, the face comes back within **0.011 m**, three of
+them within 0.002 m.
+
+**Nothing turned the face into the centre.** The camera can only see the spine;
+every consumer assumes the centre. `grasp.GRASP_DEPTH` grips 0.06 m in front of
+whatever it is handed, so the face closed the fingers 0.06 m in front of the
+book instead of 0.02 m inside its front face — on air. The same value anchors
+the shelf plane the arm's whole clearance model hangs off, so the arm was also
+driven 0.08 m deeper than the model believed.
+
+| | Before | After |
+|---|---|---|
+| Systematic error in measured book x | −0.053 m | **−0.002 m** |
+| Worst case over five trials | 0.141 m | 0.092 m |
+| Trials reaching a real grasp | 3/5 | **4/5** |
+
+What is left is odometry drift, which cancels when the robot drives to its own
+measurement.
+
+### The catch, which is worth knowing about
+
+Correcting the book moved the base with it. The standoff is measured from the
+book, so a book 0.08 m deeper put the base 0.08 m closer to the shelf and
+halved its clearance, 0.174 m to 0.094 m — and drift ate the rest on one trial,
+which drove `base_footprint` into `erc_shelf`. `GRASP_STANDOFF` had been
+quietly absorbing the depth bias; it now gives it back, 0.52 → 0.60, restoring
+exactly the clearance every earlier trial ran with. Reach is not the
+constraint: the planner solves row for row with the same 0.003 m IK error out
+to a 0.68 m standoff.
+
+If you change anything that moves the measured book, check the base clearance
+in the same breath.
+
 ## Things worth knowing before touching this
 
 * **Two simulators on one `ROS_DOMAIN_ID` serve the same topics from different
@@ -210,7 +258,7 @@ occurs again.
 ## Rebuilding anything
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q          # 120 offline tests
+python3 -m pytest src/rafeeq_solution/test -q          # 131 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py
 python3 report/build_report.py --preview               # PDF + page PNGs
 ```

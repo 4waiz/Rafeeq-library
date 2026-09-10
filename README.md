@@ -37,16 +37,17 @@ seeds, five different columns, all four colours.
 | ✅ | **Measure the book's 3D position** and use it to aim | **5/5** |
 | ✅ | Annotated image of the book with its row and measured offset | 5/5 |
 | ✅ | Stage, plan and reach into the shelf with **zero shelf collisions** | 5/5 attempted |
-| ✅ | Close the gripper on the book, with registered contact | 5/5 attempted |
+| ✅ | **Measure how far away the book is** — mean error −0.002 m against ground truth | 5/5 |
+| ✅ | Close the gripper on the book, with registered contact | **4/5 reach a real grasp** |
 | ❌ | **Retain** the book through a lift or a retreat | **blocked** |
 | ⏳ | Carry back, identify the bin, place, verify delivery | implemented, never reached live |
 
 The identification rates are worth a sentence, because "5/5" on its own could
 mean the robot found *a* book. Across the five trials the measured offset of
-the chosen book from its column centre averaged **0.151 m**, largest 0.250 m,
+the chosen book from its column centre averaged **0.145 m**, largest 0.254 m,
 against an organiser jitter of ±0.25 m. A book from a neighbouring column would
 be about a metre out. Spot-checked against Gazebo ground truth on the case that
-used to fail worst: −0.250 m recorded against −0.246 m true.
+used to fail worst: −0.254 m recorded against −0.246 m true.
 
 **One thing is honestly not working, and one is costing points.**
 
@@ -246,7 +247,7 @@ ERC_SEED=101 ros2 launch erc_bringup simulation.launch.py
 ### Testing
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q        # 120 offline tests
+python3 -m pytest src/rafeeq_solution/test -q        # 131 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py   # 23 vision tests
 ```
 
