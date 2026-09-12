@@ -9,76 +9,87 @@ Emirates Robotics Competition 2026 · Phase 1 · **Team Kanban**, Al Ain Univers
 
 ---
 
-Rafeeq finds a book on a library shelf and brings it back. You give it a shelf
-number and a colour; it reads the shelf's number plates to work out which
-physical column that is, finds the book of that colour, **measures where the
-book actually is**, drives up to it, and reaches for it.
+Rafeeq finds a book on a library shelf and puts it in the collection bin. You
+give it a shelf number and a colour; it reads the shelf's number plates to work
+out which physical column that is, finds the book of that colour, **measures
+where the book actually is**, drives up to it, grasps it, pulls it out of the
+shelf and delivers it.
 
 The name is Arabic for *companion*. The long-term goal is a library assistant
 that makes shelves reachable for people who cannot reach them — see
 [Vision](#vision-and-future-work). This repository is the Phase 1 simulation
 entry towards that.
 
-## What has actually been demonstrated
+## What has been demonstrated
 
-Honesty first, because it is the point of the whole exercise. Verified on the
-live simulator, with evidence in this repository:
+The task has been completed end to end on the live simulator, in one unedited
+take, and the completion was reported by the organisers' own contact sensor —
+not by our gripper opening.
 
-Rates are over the 5 recorded trials in [`results/`](results/) — five layout
-seeds, five different columns, all four colours.
+**The recorded run.** `ERC_SEED=101`, `shelf_column_number:=2`,
+`book_colour:=red`, recorded by [`tools/record_trial.sh`](tools/record_trial.sh)
+as one continuous take with a live trial timer. Times are simulated seconds
+from mission start, as the mission node logs them; each row is timed at the
+moment the stage that established it handed over.
 
-| | Stage | Status |
-|---|---|---|
-| ✅ | Read the shelf number plates and identify the target **column** | **5/5** |
-| ✅ | Publish `/erc/shelf_column_identification` **after** identification | 5/5 |
-| ✅ | Annotated image with a box around the **column** | 5/5 |
-| ✅ | Drive to the identified column | 5/5 |
-| ✅ | Identify the target book's **row** and publish it | **5/5** |
-| ✅ | **Measure the book's 3D position** and use it to aim | **5/5** |
-| ✅ | Annotated image of the book with its row and measured offset | 5/5 |
-| ✅ | Stage, plan and reach into the shelf with **zero shelf collisions** | 5/5 attempted |
-| ✅ | **Measure how far away the book is** — mean error −0.002 m against ground truth | 5/5 |
-| ✅ | Close the gripper on the book, with registered contact | **4/5 reach a real grasp** |
-| ❌ | **Retain** the book through a lift or a retreat | **blocked** |
-| ⏳ | Carry back, identify the bin, place, verify delivery | implemented, never reached live |
+| t (sim) | What happened |
+|---|---|
+| +23.5 s | Collection bin identified visually from the start zone, before the shelf trip |
+| +34.7 s | Number plate **2** read above **physical column 3** |
+| +51.9 s | Red book found in **row 1** and its 3D position measured |
+| +94.1 s | Grasped and lifted |
+| +99.3 s | Clear of the shelf, retention confirmed on fingertip contact |
+| +107.8 s | Released over the bin and delivered |
 
-The identification rates are worth a sentence, because "5/5" on its own could
-mean the robot found *a* book. Across the five trials the measured offset of
-the chosen book from its column centre averaged **0.145 m**, largest 0.254 m,
-against an organiser jitter of ±0.25 m. A book from a neighbouring column would
-be about a metre out. Spot-checked against Gazebo ground truth on the case that
-used to fail worst: −0.254 m recorded against −0.246 m true.
+The line that ends the run is the organisers' `/bin_contacts` topic reporting
+the book itself:
 
-**One thing is honestly not working, and one is costing points.**
+```
+OFFICIAL COMPLETION EVENT: book_col_3_row_2_red contacted the collection bin at t+107.8 s
+```
 
-1. **The grasp does not hold.** The gripper reaches the right book, closes on
-   it and registers contact, but the book is not retained. Characterised in
-   **[docs/grasp_blocker.md](docs/grasp_blocker.md)** with a reproducer.
-   Everything gated on it — the grasp points, both navigation awards and the
-   placement points — is **not earned**, and this repository does not claim
-   them.
-2. **One collision left in five runs.** The tucked left arm used to clip the
-   table on every single run, and the working arm used to strike the target
-   book on its way in; both are fixed, and four of the five trials are now
-   completely clean. What remains is a single contact: the base reversing over
-   a book the gripper had already dropped. It exists only because the grasp
-   drops the book, and it is not claimed as solved.
+The model name is the simulator's own, and it is a consistency check made after
+the fact rather than anything the solution selects on: `col_3` is the physical
+column the plate numbered 2 hangs above — the slot the printed plate **2** hangs
+over — and SDF `row_2` is competition row 1.
 
-Mean estimated score across the recorded trials: **5.9 / 19**, and four of the
-five are collision-free at the 6.0 that identification alone can earn.
+**Two clocks, and they do not disagree.** The `t+` figures above are
+**simulated** seconds (`use_sim_time`). The on-screen timer in the video is wall
+clock, started when `solution.launch.py` is launched; it read 221.3 s at the
+delivery and freezes there on **BOOK DELIVERED**. 107.8 s of simulation inside
+221.3 s of wall clock is a realised real-time factor of 0.487 for this take,
+with the viewer and a screen recorder running — and a lower bound, because the
+timer starts before the mission clock does. The video is 4:34 long, title card
+included, 1920×1080 at 15 fps.
 
-What that leaves is a working perception-to-motion pipeline and a mission that
-**reports failure honestly instead of manufacturing success**. An earlier
-version of this code treated a timeout as completion in sixteen places and
-logged `MISSION COMPLETE — book delivered to the collection bin` on runs where
-nothing had happened at all. That is gone.
+One collision was recorded in the take, and it was with the book rather than the
+shelf: `arm_right_6_link` brushed `book_col_3_row_2_red` during the retreat
+(−0.5 under the local scoring estimate).
+
+**What that does and does not prove.** It proves the whole pipeline closes:
+identification, measurement, grasp, extraction, carry and delivery, with no
+operator input and no ground truth consulted by the solution. It does not make
+the run repeatable on demand. The carry is timing-critical — see
+[The grip is a clock](#the-grip-is-a-clock) — and runs can still drop the book.
+This repository claims a demonstrated completion, not a guaranteed one.
+
+**Identification is the part that is broadly sampled.** Five recorded trials in
+[`results/`](results/) cover five layout seeds, five different columns and all
+four colours. Column and row were identified, published and photographed
+correctly on every one, and the measured offset of the chosen book from its
+column centre averaged **0.145 m**, largest **0.254 m**, against an organiser
+jitter of ±0.25 m — a book from a neighbouring column would be about a metre
+out. Those five records predate the extraction fix: each one ends
+`"outcome": "failed"` at the retention check, and they are kept as the
+identification and measurement evidence they are, not as delivery evidence.
 
 <div align="center">
-<img src="erc_images/shelf_column_20260909_100140_814.png" width="47%" alt="Shelf column identification"/>
-<img src="erc_images/target_book_20260909_100224_228.png" width="47%" alt="Target book identification"/>
+<img src="erc_images/shelf_column_20260910_075409_862.png" width="47%" alt="Shelf column identification"/>
+<img src="erc_images/target_book_20260910_075442_905.png" width="47%" alt="Target book identification"/>
 <br/>
-<sub>Live evidence written by the running solution during a trial: the target
-shelf column, and the target book with its measured position.</sub>
+<sub>Live evidence written by the running solution during the seed-101
+identification trial (`T01` in [`results/`](results/)): the target shelf
+column, and the target book with its measured position.</sub>
 </div>
 
 ## Quick start for judges
@@ -104,19 +115,57 @@ robot moves. Every other argument has a working default.
 
 Getting the container up from scratch is in [Installation](#installation).
 
+## What happens in a run
+
+One state machine, thirty-one states, every one of them gated on an
+observation. Nothing advances on a timeout.
+
+1. **Wait for readiness**, observed — controllers and joint states, not a sleep.
+2. **Find the bin first.** The robot turns on the spot in the start zone and
+   identifies the collection bin visually before it ever goes to the shelf.
+   This is the single change that made delivery possible; the reason is below.
+3. **Read the shelf.** Turn to the shelf, scan the number plates, find the plate
+   carrying the requested number, and publish the column on
+   `/erc/shelf_column_identification` once it has actually been read.
+4. **Drive to that column**, re-read its plate from the book-scan pose, find the
+   book of the requested colour, publish its row on
+   `/erc/shelf_row_identification`, and **measure the book's 3D position**.
+5. **Plan a grasp** from that measurement, take the posture while still clear of
+   the shelf, then let the holonomic base carry the open gripper in.
+6. **Close on contact**, lift, and **reverse the base 0.34 m** to pull the book
+   out of the shelf on a gentle ramped goal.
+7. **Confirm the hold** on sustained fingertip contact — while the drive to the
+   bin has already started.
+8. **Drive straight to the release pose**, lowering the torso on the way, and
+   drop the book into the bin.
+9. **Confirm delivery** on `/bin_contacts`, back off, and write the trial record.
+
 ## Where the evidence is
 
 | What | Where |
 |---|---|
 | Annotated identification images, written live during a run | [`erc_images/`](erc_images/) |
 | Machine-readable trial records (one JSON per run) | [`results/`](results/) |
+| The delivering take's logs, opening and closing frames, and checksums | [`media/`](media/) |
+| The trial recorder, and what it refuses to record | [`tools/record_trial.sh`](tools/record_trial.sh) |
 | Requirement-by-requirement status | [`docs/competition_readiness.md`](docs/competition_readiness.md) |
 | Every measured number, and the baseline it was measured against | [`docs/measured_environment.md`](docs/measured_environment.md) |
-| The open blocker, with a reproducer | [`docs/grasp_blocker.md`](docs/grasp_blocker.md) |
+| What stopped the grasp, and what fixed it | [`docs/grasp_blocker.md`](docs/grasp_blocker.md) |
 | Why odometry drift shaped several design choices | [`docs/odometry_drift.md`](docs/odometry_drift.md) |
 | Reproducing every measured number | [`tools/diagnostics/`](tools/diagnostics/) |
 | Phase 1 report | `report/Rafeeq_ERC2026_Phase1_Report.pdf` |
-| Demonstration video | **not yet recorded** — there is no successful run to record |
+
+`record_trial.sh` writes the video to `$OUT` (default `/tmp/rafeeq_trial.mp4`)
+with the run's solution and simulator logs, and the frame the trial starts from
+(`<video>_first_frame.png`), beside it. The video is not committed here; the
+delivering take is submitted as `Rafeeq_Phase1_TeamKanban_delivered.mp4`
+(11.7 MiB).
+
+That take has **no JSON record** in `results/`. The recorder ends a take on the
+organisers' `/bin_contacts` event — the book in the bin is the task being
+finished — so the take ends there, no record was written for it, and its log
+carries the completion event rather than a `RUN … COMPLETE` line. The records in
+`results/` are the five identification trials described above.
 
 ## Architecture
 
@@ -180,7 +229,8 @@ pretend otherwise.
 ## What makes the grasp hard here
 
 Worth stating, because it drove most of the engineering. All measured, not
-assumed — see [`docs/measured_environment.md`](docs/measured_environment.md).
+assumed — see [`docs/measured_environment.md`](docs/measured_environment.md)
+and [`docs/grasp_blocker.md`](docs/grasp_blocker.md).
 
 * The organiser randomises **three** things per run, not one: which plate is
   over which column, which row holds each colour (per column), and each book's
@@ -189,18 +239,66 @@ assumed — see [`docs/measured_environment.md`](docs/measured_environment.md).
 * A book presents its **spine, 0.03 m wide**. Only that dimension fits between
   the pads, so the fingers must close along world *y* — which fixes the
   gripper's roll up to one free parameter.
-* That free parameter matters enormously. The gripper body is **0.157 m long**
+* That free parameter matters enormously. The gripper body is **0.174 m long**
   along the axis perpendicular to the fingers. With a horizontal approach that
   axis is *vertical*, and a shelf row is only **0.300 m** tall with a 0.250 m
   book already in it. Rafeeq searches wrist roll × grasp height × approach tilt
   and picks a combination that keeps every link out of the shelf structure —
-  which is why the arm now enters the row with **zero** `erc_shelf` contacts,
-  where earlier attempts logged thousands.
+  which is why the arm enters the row with **zero** `erc_shelf` contacts, where
+  earlier attempts logged thousands.
+* **Grasp above the centre of mass, or lose the book.** The pads can only reach
+  the front ~0.06 m of a 0.16 m-deep book, and a two-pad pinch has almost no
+  stiffness about its own axis: the book hangs from the pinch as soon as its
+  rear leaves the board. Pinched 0.054 m *below* centre — the first clean
+  candidate the planner used to take — that is an inverted pendulum: measured in
+  ground truth, the book came 0.17 m out of the shelf still held, then flipped
+  over the pads and fell. The planner now searches grasps **above** the centre
+  first (measured +0.072 m up the spine, wrist roll −*y*, approach tilt −90° or
+  −70°), and accepts one only if the lift that unloads the book also solves.
 * The final approach is performed by the **base**, not the arm: the arm takes
-  one validated posture while still 1.35 m clear of the shelf, then the
-  holonomic base translates the whole robot straight in. Re-solving IK inside
-  the row changes the arm's posture between waypoints, and the controller
-  interpolates straight through whatever lies between them.
+  one validated posture while still clear of the shelf, then the holonomic base
+  translates the whole robot straight in, to a 0.006 m stop tolerance at
+  0.30 m/s. Re-solving IK inside the row changes the arm's posture between
+  waypoints, and the controller interpolates straight through whatever lies
+  between them.
+* **Closing is a search, not a command.** The fingers step in until a pad
+  reports contact, then squeeze by `CLOSE_SQUEEZE` (0.010), clamped so the
+  final pad gap is never slacker than `CLOSE_TARGET_GAP` — 0.0199 m on a
+  0.030 m spine. Commanding the closed position in one move drives the fingers
+  *through* the book, and what that reported as a grasp never survived a lift.
+
+### The grip is a clock
+
+There is no attach or detachable-joint mechanism anywhere in the organisers'
+world or robot — the word "detachable" does not appear in `src/` at all — so the
+book is held by friction between two pads. Those pads sit on mimic joints whose
+URDF effort limit is **0.1 N m**, and once that servo saturates the book's
+weight back-drives the fingertip and the book creeps out. Measured: once the
+book hangs free, it stays held **6–11 s**.
+
+That is why the return was rebuilt. The old route — drive to the start zone,
+search for the bin, line up, plan a placement — took 25–40 s and dropped the
+book every time. Now the bin is identified *before* the shelf trip, the drive
+to the release pose starts while the hold check is still running, the torso
+lowers on the way (at most 0.15 m), and the book is released over the bin's
+mouth. The whole carry is made to fit inside the time the grip lasts. In the
+recorded take it did, and not by much: `CARRY_TO_BIN` at t+99.3 s to `RELEASE`
+at t+107.1 s is **7.8 s** of carry against a 6–11 s grip.
+
+What breaks the grip is **acceleration, not speed**. Measured by how far the
+book survived:
+
+| Linear acceleration | Speed cap | Book dropped after |
+|---|---|---|
+| 0.30 m/s² | 0.45 m/s | 0.92 m |
+| 0.15 m/s² | 0.12 m/s | 0.95 m |
+| 0.15 m/s² | 0.45 m/s | 1.75 m |
+
+So legs carried with a book keep a high top speed (0.45 m/s, 0.60 rad/s) and
+ramp at **0.08 m/s² and 0.12 rad/s²**, in the odom frame so the ramp does not
+fight the 180° turn, limited only on speeding up so the base can still stop.
+They arrive to 0.06 m and 0.04 rad. Ordinary legs run at 0.50 m/s and
+0.90 rad/s; arm and torso trajectories run at 0.80 of the URDF velocity limits.
 
 ## Installation
 
@@ -233,21 +331,62 @@ Then the two commands in [Quick start](#quick-start-for-judges).
 | `results_dir` | `<workspace>/results` | Where the trial record is written |
 | `row_one_is_top` | `true` | Row 1 is the topmost occupied row |
 | `auto_start` | `true` | Start on readiness; `false` waits for `/rafeeq/mission/start` |
+| `use_sim_time` | `true` | Follow the Gazebo clock. Leave true. |
 | `run_id` | generated | Identifier for the trial record |
 
 ### Reproducible layouts
 
 `simulation.launch.py` seeds its randomisation from `ERC_SEED`, which makes a
-layout repeatable and is how the trials in `results/` were run:
+layout repeatable and is how the trials in `results/` and the recorded run were
+launched:
 
 ```bash
 ERC_SEED=101 ros2 launch erc_bringup simulation.launch.py
 ```
 
+### Recording a competition trial
+
+```bash
+tools/record_trial.sh 2 red 101        # column, colour, seed
+```
+
+Run inside the container, on a virtual X display of its own. It produces the
+take the Phase 1 document asks for: team title card first, then
+`simulation.launch.py` and `solution.launch.py` typed and launched on camera, a
+live trial timer beside them, one continuous take, no cuts and no speed-up. It
+abandons a take early — printing the simulator's own log — if the arena never
+spawns all 20 books, if the organisers' controller spawners lose their startup
+race, or if the viewer has no robot in its scene. All three happen
+intermittently on this machine.
+
+That last one cost a finished take. Gazebo's viewer builds its scene from
+whatever the server has the instant it connects, and the robot is spawned into
+the world after the arena is: when the viewer is started alongside the server
+it can lose that race, and then the recording shows the shelf, the table and
+the bin with nothing between them for the whole run — a real delivery with no
+robot on camera. The script now starts the world without its viewer and
+attaches the viewer once `tiago_pro` is in the model list, so the scene it
+builds already has the robot in it. Then it checks: asking the viewer to follow
+the robot returns the follow target named when the viewer has it and empty when
+it does not, which is the only answer the viewer gives about its own scene. A
+take that fails that check is restarted once and then abandoned.
+
+Gazebo renders on the GPU through Mesa's `d3d12` driver under WSL, which the
+script sets up when it finds it. That takes the real-time factor from 0.36 in
+software to **0.65–0.70** headless, 0.56 with the viewer up, which is what fits
+an unedited real-time run inside the five-minute limit — the delivering take
+realised 0.487 up to the delivery, with the viewer and the screen recorder both
+running.
+Only the rendering changes; the physics and the solution are identical.
+
+The viewer's window is made 1700 px wide against the 1280 px the recording
+gives it, so Gazebo's world and entity-tree panels fall behind the terminal
+column and the whole recorded width goes to the arena.
+
 ### Testing
 
 ```bash
-python3 -m pytest src/rafeeq_solution/test -q        # 131 offline tests
+python3 -m pytest src/rafeeq_solution/test -q        # 162 offline tests
 python3 src/rafeeq_solution/scripts/test_vision_offline.py   # 23 vision tests
 ```
 
@@ -257,11 +396,13 @@ No ROS, no Gazebo, no robot needed for either. Run them before every attempt.
 
 | Symptom | Cause and fix |
 |---|---|
-| Mission sits in `WAIT_READY` | A controller has not come up. Rafeeq waits for observed readiness rather than sleeping; check `ros2 action list` for `follow_joint_trajectory`. |
+| Mission sits in `WAIT_READY` | A controller has not come up. Rafeeq waits for observed readiness rather than sleeping; check `ros2 action list` for `follow_joint_trajectory`. `record_trial.sh` abandons a take for exactly this. |
+| The arena spawns but the robot never moves | The organisers' launch races its own `controller_manager`; spawners can die with *"Failed loading controller"*. Relaunch the simulation. |
 | `invalid launch arguments` | `shelf_column_number` must be 1–5 and `book_colour` one of the four. The message lists what it got. |
 | No evidence images appear | Check `image_dir` in the launch log. Rafeeq resolves it from the parameter, then `ERC_IMAGES_DIR`, then the workspace — it never needs write access to `/`. |
 | Perception logs *"camera frames are stamped ahead of /tf"* | Expected on this bridge — images arrive ~1.7 s ahead of the transforms. Rafeeq uses the latest transform only while the base is stationary and drops frames while moving. |
-| Everything runs but slowly | Real-time factor was measured at **0.362** on the validation machine. Sim seconds ≠ wall seconds; the trial records report both. |
+| The book is dropped on the way to the bin | The grip lasts 6–11 s once the book hangs free. The run fails explicitly and says so; it does not pretend to have delivered. |
+| Everything runs but slowly | Real-time factor was measured at **0.362** in software on the validation machine, 0.65–0.70 on the GPU headless and 0.56 with the viewer up. Sim seconds ≠ wall seconds: the trial records are in simulated seconds (`simulated_seconds_total`), the video's timer is wall clock. |
 | Two simulations at once | Two `gz sim` servers on one `ROS_DOMAIN_ID` serve the same topics from different worlds and every measurement becomes a coin flip. Make sure only one is running. |
 
 ## Repository structure
@@ -283,7 +424,9 @@ No ROS, no Gazebo, no robot needed for either. Run them before every attempt.
 │   ├── launch/solution.launch.py
 │   └── config/arm_poses.yaml
 ├── src/erc_bringup, erc_description, …   organisers' packages, unmodified
-├── docs/                        measurements, readiness, blocker, organiser README
+├── docs/                        measurements, readiness, grasp, organiser README
+├── tools/record_trial.sh        one-take competition recording
+├── tools/diagnostics/           scripts that reproduce the measured numbers
 ├── erc_images/                  live evidence images
 ├── results/                     machine-readable trial records
 └── report/                      Phase 1 report
@@ -303,11 +446,13 @@ The accessibility work is the motivation and the roadmap, not a claim.
 
 Nearer-term, concrete work:
 
-1. Resolve the grasp retention blocker (see the reproducer).
-2. Collision-aware trajectory checking, rather than the coarse advisory model
+1. Make the carry robust rather than timing-critical. Everything downstream of
+   the lift currently races a grip that lasts 6–11 s.
+2. Repeat the delivery across seeds and columns, and record the rate, the way
+   identification is recorded now.
+3. Collision-aware trajectory checking, rather than the coarse advisory model
    currently used to rank IK solutions.
-3. Gentle placement verification, once delivery can be reached at all.
-4. Broader trial coverage across all 20 column/colour combinations.
+4. Gentle placement instead of a drop, which is worth more under the rubric.
 
 ## Acknowledgements
 

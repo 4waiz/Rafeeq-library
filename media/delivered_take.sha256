@@ -1,0 +1,18 @@
+# The delivering take — ERC 2026 Phase 1, Team Kanban
+#
+# The video is not committed here: at 11.7 MiB it is an oversized binary that
+# belongs on YouTube, not in the history.  These digests are what ties the
+# uploaded video back to the run this repository describes.  YouTube re-encodes
+# whatever it is given, so check them against the file as recorded, before
+# upload, not against a download.
+#
+# Recorded 12 September 2026 by tools/record_trial.sh, seed 101, column 2, red.
+# Delivered: book_col_3_row_2_red contacted the collection bin at t+107.8 s.
+# 274 s (4:34), 1920x1080 at 15 fps, 12,266,141 bytes.
+#
+# Verify with:  sha256sum -c media/delivered_take.sha256
+# after renaming the three files to the names below.
+
+c3ba3629d42410f529a4eea1e4a7c954641d592b97ac4a59408544868b25041b  rafeeq_take44.mp4
+90499eeb83798c70cc906f354db2d8b95269bccd886029d7f22e6de2964d68d1  rafeeq_take44_solution.log
+70597dded11475ee70749458285ed575fdd40509201a7914efc8f928a8b5ea9f  rafeeq_take44_simulation.log

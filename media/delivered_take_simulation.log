@@ -1,0 +1,652 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-12-04-52-56-065587-Awaiz-188030
+[INFO] [launch]: Default logging verbosity is set to INFO
+[simulation.launch] 30 contact bridges configured
+[INFO] [bash-1]: process started with pid [188032]
+[INFO] [robot_state_publisher-2]: process started with pid [188034]
+[INFO] [parameter_bridge-3]: process started with pid [188036]
+[INFO] [parameter_bridge-4]: process started with pid [188038]
+[INFO] [parameter_bridge-5]: process started with pid [188040]
+[parameter_bridge-3] [INFO] [1789188776.286243356] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.286715475] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/cmd_vel (geometry_msgs/msg/Twist) -> /cmd_vel (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.287873625] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/odom (gz.msgs.Odometry) -> /odom (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.288435049] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/odom_tf (gz.msgs.Pose_V) -> /odom_tf (tf2_msgs/msg/TFMessage)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.288804340] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/scan_front_raw (gz.msgs.LaserScan) -> /scan_front_raw (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.289325164] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/scan_rear_raw (gz.msgs.LaserScan) -> /scan_rear_raw (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.289482089] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/base_imu (gz.msgs.IMU) -> /base_imu (sensor_msgs/msg/Imu)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1789188776.289660622] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/erc_collection_bin/link/collection_bin_base_link/sensor/bin_contact_sensor/contact (gz.msgs.Contacts) -> /world/erc_world/model/erc_collection_bin/link/collection_bin_base_link/sensor/bin_contact_sensor/contact (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[robot_state_publisher-2] [INFO] [1789188776.293550666] [robot_state_publisher]: got segment arm_left_1_link
+[robot_state_publisher-2] [INFO] [1789188776.293619911] [robot_state_publisher]: got segment arm_left_2_link
+[robot_state_publisher-2] [INFO] [1789188776.293625058] [robot_state_publisher]: got segment arm_left_3_link
+[robot_state_publisher-2] [INFO] [1789188776.293627745] [robot_state_publisher]: got segment arm_left_4_link
+[robot_state_publisher-2] [INFO] [1789188776.293630103] [robot_state_publisher]: got segment arm_left_5_link
+[robot_state_publisher-2] [INFO] [1789188776.293632297] [robot_state_publisher]: got segment arm_left_6_link
+[robot_state_publisher-2] [INFO] [1789188776.293634613] [robot_state_publisher]: got segment arm_left_7_link
+[robot_state_publisher-2] [INFO] [1789188776.293637065] [robot_state_publisher]: got segment arm_left_tool_link
+[robot_state_publisher-2] [INFO] [1789188776.293639434] [robot_state_publisher]: got segment arm_right_1_link
+[robot_state_publisher-2] [INFO] [1789188776.293641666] [robot_state_publisher]: got segment arm_right_2_link
+[robot_state_publisher-2] [INFO] [1789188776.293643827] [robot_state_publisher]: got segment arm_right_3_link
+[robot_state_publisher-2] [INFO] [1789188776.293645995] [robot_state_publisher]: got segment arm_right_4_link
+[robot_state_publisher-2] [INFO] [1789188776.293648142] [robot_state_publisher]: got segment arm_right_5_link
+[robot_state_publisher-2] [INFO] [1789188776.293650300] [robot_state_publisher]: got segment arm_right_6_link
+[robot_state_publisher-2] [INFO] [1789188776.293652576] [robot_state_publisher]: got segment arm_right_7_link
+[robot_state_publisher-2] [INFO] [1789188776.293654685] [robot_state_publisher]: got segment arm_right_tool_link
+[robot_state_publisher-2] [INFO] [1789188776.293656849] [robot_state_publisher]: got segment base_antenna_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293659401] [robot_state_publisher]: got segment base_antenna_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293661775] [robot_state_publisher]: got segment base_dock_link
+[robot_state_publisher-2] [INFO] [1789188776.293664056] [robot_state_publisher]: got segment base_footprint
+[robot_state_publisher-2] [INFO] [1789188776.293666321] [robot_state_publisher]: got segment base_front_laser_link
+[robot_state_publisher-2] [INFO] [1789188776.293668602] [robot_state_publisher]: got segment base_imu_link
+[robot_state_publisher-2] [INFO] [1789188776.293670900] [robot_state_publisher]: got segment base_link
+[robot_state_publisher-2] [INFO] [1789188776.293673179] [robot_state_publisher]: got segment base_rear_laser_link
+[robot_state_publisher-2] [INFO] [1789188776.293675418] [robot_state_publisher]: got segment eye_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293677648] [robot_state_publisher]: got segment eye_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293679955] [robot_state_publisher]: got segment gripper_left_base_finger_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293682402] [robot_state_publisher]: got segment gripper_left_base_finger_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293684677] [robot_state_publisher]: got segment gripper_left_base_link
+[robot_state_publisher-2] [INFO] [1789188776.293687049] [robot_state_publisher]: got segment gripper_left_fingertip_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293689237] [robot_state_publisher]: got segment gripper_left_fingertip_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293691347] [robot_state_publisher]: got segment gripper_left_grasping_link
+[robot_state_publisher-2] [INFO] [1789188776.293693653] [robot_state_publisher]: got segment gripper_left_inner_finger_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293696307] [robot_state_publisher]: got segment gripper_left_inner_finger_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293698482] [robot_state_publisher]: got segment gripper_left_outer_finger_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293700626] [robot_state_publisher]: got segment gripper_left_outer_finger_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293702903] [robot_state_publisher]: got segment gripper_left_screw_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293705134] [robot_state_publisher]: got segment gripper_left_screw_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293707294] [robot_state_publisher]: got segment gripper_right_base_finger_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293709472] [robot_state_publisher]: got segment gripper_right_base_finger_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293711927] [robot_state_publisher]: got segment gripper_right_base_link
+[robot_state_publisher-2] [INFO] [1789188776.293714154] [robot_state_publisher]: got segment gripper_right_fingertip_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293716354] [robot_state_publisher]: got segment gripper_right_fingertip_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293718498] [robot_state_publisher]: got segment gripper_right_grasping_link
+[robot_state_publisher-2] [INFO] [1789188776.293720736] [robot_state_publisher]: got segment gripper_right_inner_finger_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293722865] [robot_state_publisher]: got segment gripper_right_inner_finger_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293744264] [robot_state_publisher]: got segment gripper_right_outer_finger_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293746901] [robot_state_publisher]: got segment gripper_right_outer_finger_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293749132] [robot_state_publisher]: got segment gripper_right_screw_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293751432] [robot_state_publisher]: got segment gripper_right_screw_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293753675] [robot_state_publisher]: got segment head_1_link
+[robot_state_publisher-2] [INFO] [1789188776.293756138] [robot_state_publisher]: got segment head_2_link
+[robot_state_publisher-2] [INFO] [1789188776.293758368] [robot_state_publisher]: got segment head_front_camera_accel_frame
+[robot_state_publisher-2] [INFO] [1789188776.293760498] [robot_state_publisher]: got segment head_front_camera_accel_optical_frame
+[robot_state_publisher-2] [INFO] [1789188776.293762675] [robot_state_publisher]: got segment head_front_camera_bottom_screw_frame
+[robot_state_publisher-2] [INFO] [1789188776.293764890] [robot_state_publisher]: got segment head_front_camera_color_eye_frame
+[robot_state_publisher-2] [INFO] [1789188776.293767143] [robot_state_publisher]: got segment head_front_camera_color_frame
+[robot_state_publisher-2] [INFO] [1789188776.293769493] [robot_state_publisher]: got segment head_front_camera_color_optical_frame
+[robot_state_publisher-2] [INFO] [1789188776.293771652] [robot_state_publisher]: got segment head_front_camera_depth_frame
+[robot_state_publisher-2] [INFO] [1789188776.293773861] [robot_state_publisher]: got segment head_front_camera_depth_optical_frame
+[robot_state_publisher-2] [INFO] [1789188776.293777117] [robot_state_publisher]: got segment head_front_camera_gyro_frame
+[robot_state_publisher-2] [INFO] [1789188776.293779464] [robot_state_publisher]: got segment head_front_camera_gyro_optical_frame
+[robot_state_publisher-2] [INFO] [1789188776.293781764] [robot_state_publisher]: got segment head_front_camera_infra1_frame
+[robot_state_publisher-2] [INFO] [1789188776.293784195] [robot_state_publisher]: got segment head_front_camera_infra1_optical_frame
+[robot_state_publisher-2] [INFO] [1789188776.293786489] [robot_state_publisher]: got segment head_front_camera_infra2_frame
+[robot_state_publisher-2] [INFO] [1789188776.293789241] [robot_state_publisher]: got segment head_front_camera_infra2_optical_frame
+[robot_state_publisher-2] [INFO] [1789188776.293791670] [robot_state_publisher]: got segment head_front_camera_link
+[robot_state_publisher-2] [INFO] [1789188776.293794035] [robot_state_publisher]: got segment head_screen_link
+[robot_state_publisher-2] [INFO] [1789188776.293797553] [robot_state_publisher]: got segment sellion_link
+[robot_state_publisher-2] [INFO] [1789188776.293799907] [robot_state_publisher]: got segment suspension_front_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293802272] [robot_state_publisher]: got segment suspension_front_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293804507] [robot_state_publisher]: got segment suspension_rear_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293806672] [robot_state_publisher]: got segment suspension_rear_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293808830] [robot_state_publisher]: got segment torso_arm_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293811163] [robot_state_publisher]: got segment torso_arm_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293813404] [robot_state_publisher]: got segment torso_base_link
+[robot_state_publisher-2] [INFO] [1789188776.293815734] [robot_state_publisher]: got segment torso_fixed_column_link
+[robot_state_publisher-2] [INFO] [1789188776.293817909] [robot_state_publisher]: got segment torso_head_link
+[robot_state_publisher-2] [INFO] [1789188776.293820176] [robot_state_publisher]: got segment torso_lift_link
+[robot_state_publisher-2] [INFO] [1789188776.293822342] [robot_state_publisher]: got segment virtual_base_laser_link
+[robot_state_publisher-2] [INFO] [1789188776.293824540] [robot_state_publisher]: got segment wheel_front_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293826766] [robot_state_publisher]: got segment wheel_front_right_link
+[robot_state_publisher-2] [INFO] [1789188776.293828968] [robot_state_publisher]: got segment wheel_rear_left_link
+[robot_state_publisher-2] [INFO] [1789188776.293831203] [robot_state_publisher]: got segment wheel_rear_right_link
+[parameter_bridge-4] [INFO] [1789188777.307611458] [head_camera_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/color (gz.msgs.Image) -> /head_front_camera/head_front_camera/color/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.308876963] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/base_footprint/sensor/base_footprint_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1789188777.308887199] [head_camera_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/camera_info (gz.msgs.CameraInfo) -> /head_front_camera/head_front_camera/color/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1789188777.309280050] [head_camera_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/depth_image (gz.msgs.Image) -> /head_front_camera/head_front_camera/depth/image_rect_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1789188777.309647485] [head_camera_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/camera_info (gz.msgs.CameraInfo) -> /head_front_camera/head_front_camera/depth/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.309998303] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/torso_lift_link/sensor/torso_lift_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.310356475] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/head_1_link/sensor/head_1_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.310594799] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/head_2_link/sensor/head_2_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.310828295] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_1_link/sensor/arm_left_1_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.311096484] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_2_link/sensor/arm_left_2_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.311441857] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_3_link/sensor/arm_left_3_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.311682109] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_4_link/sensor/arm_left_4_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.311914891] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_5_link/sensor/arm_left_5_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.312184516] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_6_link/sensor/arm_left_6_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.312371045] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_left_7_link/sensor/arm_left_7_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.312630274] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_1_link/sensor/arm_right_1_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.312927170] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_2_link/sensor/arm_right_2_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.313161161] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_3_link/sensor/arm_right_3_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.313503608] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_4_link/sensor/arm_right_4_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.313834273] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_5_link/sensor/arm_right_5_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.314125827] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_6_link/sensor/arm_right_6_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.314533958] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/arm_right_7_link/sensor/arm_right_7_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.314865330] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_left_fingertip_left_link/sensor/gripper_left_fingertip_left_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.315383468] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_left_fingertip_right_link/sensor/gripper_left_fingertip_right_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.315709569] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_left_inner_finger_left_link/sensor/gripper_left_inner_finger_left_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.315967366] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_left_inner_finger_right_link/sensor/gripper_left_inner_finger_right_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.316251619] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_left_outer_finger_left_link/sensor/gripper_left_outer_finger_left_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.316556456] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_left_outer_finger_right_link/sensor/gripper_left_outer_finger_right_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.316823837] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_right_fingertip_left_link/sensor/gripper_right_fingertip_left_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.317060107] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_right_fingertip_right_link/sensor/gripper_right_fingertip_right_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.317291870] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_right_inner_finger_left_link/sensor/gripper_right_inner_finger_left_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.317549104] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_right_inner_finger_right_link/sensor/gripper_right_inner_finger_right_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.317798040] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_right_outer_finger_left_link/sensor/gripper_right_outer_finger_left_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[parameter_bridge-5] [INFO] [1789188777.318009940] [contact_bridge]: Creating GZ->ROS Bridge: [/world/erc_world/model/tiago_pro/link/gripper_right_outer_finger_right_link/sensor/gripper_right_outer_finger_right_link_contact/contact (gz.msgs.Contacts) -> /contacts (ros_gz_interfaces/msg/Contacts)] (Lazy 0)
+[INFO] [create-6]: process started with pid [188116]
+[create-6] [INFO] [1789188779.287732031] [ros_gz_sim]: Requesting list of world names.
+[create-6] [INFO] [1789188779.489421367] [ros_gz_sim]: Waiting messages on topic [robot_description].
+[create-6] [INFO] [1789188779.492748233] [ros_gz_sim]: Requested creation of entity.
+[create-6] [INFO] [1789188779.492780828] [ros_gz_sim]: OK creation of entity.
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="base_footprint"]/sensor[@name="base_front_laser"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="base_footprint"]/sensor[@name="base_imu_sensor"]/imu/noise:<urdf-string>:L0]: XML Element[noise], child of element[imu], not defined in SDF. Copying[noise] as children of [imu].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="base_footprint"]/sensor[@name="base_rear_laser"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/joint[@name="arm_left_7_joint"]/physics/ode/provide_feedback:<urdf-string>:L0]: XML Element[provide_feedback], child of element[ode], not defined in SDF. Copying[provide_feedback] as children of [ode].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/joint[@name="arm_right_7_joint"]/physics/ode/provide_feedback:<urdf-string>:L0]: XML Element[provide_feedback], child of element[ode], not defined in SDF. Copying[provide_feedback] as children of [ode].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera"]/camera[@name="head_front_camera"]/vertical_fov:<urdf-string>:L0]: XML Element[vertical_fov], child of element[camera], not defined in SDF. Copying[vertical_fov] as children of [camera].
+[INFO] [create-6]: process has finished cleanly [pid 188116]
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera_frame_depth_sensor"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera_frame_depth_sensor"]/camera[@name="rgbd_camera_frame"]/vertical_fov:<urdf-string>:L0]: XML Element[vertical_fov], child of element[camera], not defined in SDF. Copying[vertical_fov] as children of [camera].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera_imu_sensor"]/gz_frame_id:<urdf-string>:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[bash-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera_imu_sensor"]/imu/noise:<urdf-string>:L0]: XML Element[noise], child of element[imu], not defined in SDF. Copying[noise] as children of [imu].
+[bash-1] [INFO] [1789188779.720123894] [GazeboSimROS2ControlPlugin]: robot_param_node is robot_state_publisher
+[bash-1] [INFO] [1789188779.720154366] [GazeboSimROS2ControlPlugin]: robot_param_node is robot_description
+[bash-1] [INFO] [1789188779.732854064] [gz_ros2_control]: connected to service!! robot_state_publisher asking for robot_description
+[bash-1] [INFO] [1789188779.735014894] [gz_ros2_control]: Received URDF from param server
+[bash-1] [INFO] [1789188779.755561228] [gz_ros2_control]: The position_proportional_gain has been set to: 0.1
+[bash-1] [INFO] [1789188779.756217460] [gz_ros2_control]: Loading joint: torso_lift_joint
+[bash-1] [INFO] [1789188779.756278921] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756289072] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756342280] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756367740] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756379884] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756383942] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756603584] [gz_ros2_control]: Loading joint: head_1_joint
+[bash-1] [INFO] [1789188779.756609843] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756614394] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756618592] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756623609] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756627789] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756631734] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756671862] [gz_ros2_control]: Loading joint: head_2_joint
+[bash-1] [INFO] [1789188779.756676932] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756680820] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756684746] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756688693] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756695145] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756699468] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756722159] [gz_ros2_control]: Loading joint: arm_left_1_joint
+[bash-1] [INFO] [1789188779.756726909] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756731618] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756735510] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756739233] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756743132] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756747552] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756766728] [gz_ros2_control]: Loading joint: arm_left_2_joint
+[bash-1] [INFO] [1789188779.756771526] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756776362] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756780270] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756784076] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756787861] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756791525] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756810234] [gz_ros2_control]: Loading joint: arm_left_3_joint
+[bash-1] [INFO] [1789188779.756815019] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756818770] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756822511] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756827913] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756832073] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756835872] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756853777] [gz_ros2_control]: Loading joint: arm_left_4_joint
+[bash-1] [INFO] [1789188779.756858178] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.756861732] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756865525] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.756869273] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.756872931] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.756876618] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.756948666] [gz_ros2_control]: Loading joint: arm_left_5_joint
+[bash-1] [INFO] [1789188779.756982435] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757030553] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757044429] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.757049061] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.757123702] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.757138850] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757227530] [gz_ros2_control]: Loading joint: arm_left_6_joint
+[bash-1] [INFO] [1789188779.757276727] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757281175] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757284950] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.757288240] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.757312607] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.757317983] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757362806] [gz_ros2_control]: Loading joint: arm_left_7_joint
+[bash-1] [INFO] [1789188779.757367896] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757371218] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757374481] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.757491437] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.757505972] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.757510336] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757554747] [gz_ros2_control]: Loading joint: gripper_left_finger_joint
+[bash-1] [INFO] [1789188779.757561577] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757565559] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757582991] [gz_ros2_control]: 			 found initial value: 0.000000
+[bash-1] [INFO] [1789188779.757590360] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.757594468] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.757601811] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.757605371] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.757629169] [gz_ros2_control]: Loading joint: gripper_left_outer_finger_right_joint
+[bash-1] [INFO] [1789188779.757765403] [gz_ros2_control]: Joint 'gripper_left_outer_finger_right_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.757873340] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757880357] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.757915723] [gz_ros2_control]: Loading joint: gripper_left_inner_finger_right_joint
+[bash-1] [INFO] [1789188779.757928975] [gz_ros2_control]: Joint 'gripper_left_inner_finger_right_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.757956340] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757960473] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.757977628] [gz_ros2_control]: Loading joint: gripper_left_fingertip_right_joint
+[bash-1] [INFO] [1789188779.757984799] [gz_ros2_control]: Joint 'gripper_left_fingertip_right_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: 8.28
+[bash-1] [INFO] [1789188779.757989761] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.757993256] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758005712] [gz_ros2_control]: Loading joint: gripper_left_finger_right_joint
+[bash-1] [INFO] [1789188779.758012512] [gz_ros2_control]: Joint 'gripper_left_finger_right_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: 0.22
+[bash-1] [INFO] [1789188779.758016662] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758020073] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758031859] [gz_ros2_control]: Loading joint: gripper_left_outer_finger_left_joint
+[bash-1] [INFO] [1789188779.758038216] [gz_ros2_control]: Joint 'gripper_left_outer_finger_left_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.758043028] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758046507] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758062113] [gz_ros2_control]: Loading joint: gripper_left_inner_finger_left_joint
+[bash-1] [INFO] [1789188779.758068286] [gz_ros2_control]: Joint 'gripper_left_inner_finger_left_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.758072217] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758075882] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758087756] [gz_ros2_control]: Loading joint: gripper_left_fingertip_left_joint
+[bash-1] [INFO] [1789188779.758093974] [gz_ros2_control]: Joint 'gripper_left_fingertip_left_joint'is mimicking joint 'gripper_left_finger_joint' with multiplier: 8.28
+[bash-1] [INFO] [1789188779.758098008] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758101408] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758113019] [gz_ros2_control]: Loading joint: arm_right_1_joint
+[bash-1] [INFO] [1789188779.758117455] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758121391] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758126126] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758129841] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758133649] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758148515] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758173170] [gz_ros2_control]: Loading joint: arm_right_2_joint
+[bash-1] [INFO] [1789188779.758177177] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758180557] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758183894] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758187190] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758190601] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758193730] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758210678] [gz_ros2_control]: Loading joint: arm_right_3_joint
+[bash-1] [INFO] [1789188779.758214453] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758217893] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758221186] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758224421] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758227621] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758233050] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758250924] [gz_ros2_control]: Loading joint: arm_right_4_joint
+[bash-1] [INFO] [1789188779.758255060] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758258291] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758261561] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758264698] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758267816] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758270904] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758286272] [gz_ros2_control]: Loading joint: arm_right_5_joint
+[bash-1] [INFO] [1789188779.758290049] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758293173] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758296322] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758299531] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758302772] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758305780] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758321286] [gz_ros2_control]: Loading joint: arm_right_6_joint
+[bash-1] [INFO] [1789188779.758325314] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758328615] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758331845] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758335059] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758338234] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758341278] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758360690] [gz_ros2_control]: Loading joint: arm_right_7_joint
+[bash-1] [INFO] [1789188779.758364784] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758367901] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758371093] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758374273] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758377461] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758380427] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758397734] [gz_ros2_control]: Loading joint: gripper_right_finger_joint
+[bash-1] [INFO] [1789188779.758401594] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758404845] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758408428] [gz_ros2_control]: 			 found initial value: 0.000000
+[bash-1] [INFO] [1789188779.758413624] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758417317] [gz_ros2_control]: 		 effort
+[bash-1] [INFO] [1789188779.758420657] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758423564] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758439575] [gz_ros2_control]: Loading joint: gripper_right_outer_finger_right_joint
+[bash-1] [INFO] [1789188779.758446072] [gz_ros2_control]: Joint 'gripper_right_outer_finger_right_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.758449966] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758453077] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758464115] [gz_ros2_control]: Loading joint: gripper_right_inner_finger_right_joint
+[bash-1] [INFO] [1789188779.758469768] [gz_ros2_control]: Joint 'gripper_right_inner_finger_right_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.758474563] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758477616] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758486560] [gz_ros2_control]: Loading joint: gripper_right_fingertip_right_joint
+[bash-1] [INFO] [1789188779.758494542] [gz_ros2_control]: Joint 'gripper_right_fingertip_right_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: 8.28
+[bash-1] [INFO] [1789188779.758498051] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758500883] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758512137] [gz_ros2_control]: Loading joint: gripper_right_finger_right_joint
+[bash-1] [INFO] [1789188779.758517250] [gz_ros2_control]: Joint 'gripper_right_finger_right_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: 0.22
+[bash-1] [INFO] [1789188779.758520522] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758523342] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758532248] [gz_ros2_control]: Loading joint: gripper_right_outer_finger_left_joint
+[bash-1] [INFO] [1789188779.758537414] [gz_ros2_control]: Joint 'gripper_right_outer_finger_left_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.758540629] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758543394] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758552514] [gz_ros2_control]: Loading joint: gripper_right_inner_finger_left_joint
+[bash-1] [INFO] [1789188779.758557483] [gz_ros2_control]: Joint 'gripper_right_inner_finger_left_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: -8.28
+[bash-1] [INFO] [1789188779.758560759] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758563713] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758572762] [gz_ros2_control]: Loading joint: gripper_right_fingertip_left_joint
+[bash-1] [INFO] [1789188779.758577386] [gz_ros2_control]: Joint 'gripper_right_fingertip_left_joint'is mimicking joint 'gripper_right_finger_joint' with multiplier: 8.28
+[bash-1] [INFO] [1789188779.758580654] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758583425] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758593946] [gz_ros2_control]: Loading joint: wheel_front_right_joint
+[bash-1] [INFO] [1789188779.758597443] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758600374] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758603376] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758606380] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758617233] [gz_ros2_control]: Loading joint: wheel_front_left_joint
+[bash-1] [INFO] [1789188779.758620693] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758623747] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758626826] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758629746] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758639357] [gz_ros2_control]: Loading joint: wheel_rear_right_joint
+[bash-1] [INFO] [1789188779.758642895] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758645768] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758648687] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758651593] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.758660369] [gz_ros2_control]: Loading joint: wheel_rear_left_joint
+[bash-1] [INFO] [1789188779.758663877] [gz_ros2_control]: 	State:
+[bash-1] [INFO] [1789188779.758666934] [gz_ros2_control]: 		 position
+[bash-1] [INFO] [1789188779.758669802] [gz_ros2_control]: 		 velocity
+[bash-1] [INFO] [1789188779.758675924] [gz_ros2_control]: 	Command:
+[bash-1] [INFO] [1789188779.759784002] [gz_ros2_control]: Loading sensor: base_imu_sensor
+[bash-1] [INFO] [1789188779.759820254] [gz_ros2_control]: 	State:
+[bash-1] [WARN] [1789188779.759845222] [gz_ros2_control]: IMU sensor 'base_imu_sensor' not found in hardware_info, skipping.
+[bash-1] [INFO] [1789188779.759868867] [gz_ros2_control]: Loading sensor: head_front_camera_imu_sensor
+[bash-1] [INFO] [1789188779.759873084] [gz_ros2_control]: 	State:
+[bash-1] [WARN] [1789188779.759877163] [gz_ros2_control]: IMU sensor 'head_front_camera_imu_sensor' not found in hardware_info, skipping.
+[bash-1] [INFO] [1789188779.760057430] [resource_manager]: Initialize hardware 'ros2_control_gazebo_system' 
+[bash-1] [INFO] [1789188779.760378239] [resource_manager]: Successful initialization of hardware 'ros2_control_gazebo_system'
+[bash-1] [INFO] [1789188779.760611178] [resource_manager]: 'configure' hardware 'ros2_control_gazebo_system' 
+[bash-1] [INFO] [1789188779.760623390] [gz_ros2_control]: System Successfully configured!
+[bash-1] [INFO] [1789188779.760636869] [resource_manager]: Successful 'configure' of hardware 'ros2_control_gazebo_system'
+[bash-1] [INFO] [1789188779.760659887] [resource_manager]: 'activate' hardware 'ros2_control_gazebo_system' 
+[bash-1] [INFO] [1789188779.760665980] [resource_manager]: Successful 'activate' of hardware 'ros2_control_gazebo_system'
+[bash-1] [INFO] [1789188779.760672567] [gz_ros2_control]: Loading controller_manager
+[bash-1] [1;31m[Err] [Physics.cc:1906] [0m[1;31mAttempting to create a mimic constraint for joint [[0m[1;31mgripper_left_inner_finger_left_joint[0m[1;31m] but the chosen physics engine does not support [0m[1;31mmimic constraints, so no constraint will be [0m[1;31mcreated.[0m[1;31m[0m
+[bash-1] [WARN] [1789188779.920644453] [gz_ros2_control]:  Desired controller update period (0.004 s) is slower than the gazebo simulation period (0.002 s).
+[INFO] [create-7]: process started with pid [188178]
+[INFO] [create-8]: process started with pid [188180]
+[INFO] [create-9]: process started with pid [188182]
+[INFO] [create-10]: process started with pid [188184]
+[INFO] [create-11]: process started with pid [188186]
+[INFO] [create-12]: process started with pid [188188]
+[INFO] [create-13]: process started with pid [188190]
+[INFO] [create-14]: process started with pid [188192]
+[INFO] [create-15]: process started with pid [188194]
+[INFO] [create-16]: process started with pid [188196]
+[INFO] [create-17]: process started with pid [188198]
+[INFO] [create-18]: process started with pid [188200]
+[INFO] [create-19]: process started with pid [188202]
+[INFO] [create-20]: process started with pid [188204]
+[INFO] [create-21]: process started with pid [188206]
+[INFO] [create-22]: process started with pid [188210]
+[INFO] [create-23]: process started with pid [188212]
+[INFO] [create-24]: process started with pid [188224]
+[INFO] [create-25]: process started with pid [188293]
+[INFO] [create-26]: process started with pid [188351]
+[INFO] [create-27]: process started with pid [188446]
+[INFO] [create-28]: process started with pid [188460]
+[INFO] [create-29]: process started with pid [188487]
+[INFO] [create-30]: process started with pid [188507]
+[INFO] [create-31]: process started with pid [188510]
+[create-7] [INFO] [1789188781.296467961] [ros_gz_sim]: Requesting list of world names.
+[create-8] [INFO] [1789188781.290389607] [ros_gz_sim]: Requesting list of world names.
+[create-9] [INFO] [1789188781.306222154] [ros_gz_sim]: Requesting list of world names.
+[create-10] [INFO] [1789188781.304614967] [ros_gz_sim]: Requesting list of world names.
+[create-11] [INFO] [1789188781.288499305] [ros_gz_sim]: Requesting list of world names.
+[create-12] [INFO] [1789188781.310430133] [ros_gz_sim]: Requesting list of world names.
+[create-13] [INFO] [1789188781.294518812] [ros_gz_sim]: Requesting list of world names.
+[create-14] [INFO] [1789188781.299483326] [ros_gz_sim]: Requesting list of world names.
+[create-15] [INFO] [1789188781.298094938] [ros_gz_sim]: Requesting list of world names.
+[create-16] [INFO] [1789188781.308186666] [ros_gz_sim]: Requesting list of world names.
+[create-17] [INFO] [1789188781.322950661] [ros_gz_sim]: Requesting list of world names.
+[create-18] [INFO] [1789188781.310690738] [ros_gz_sim]: Requesting list of world names.
+[create-19] [INFO] [1789188781.308639981] [ros_gz_sim]: Requesting list of world names.
+[create-20] [INFO] [1789188781.315634476] [ros_gz_sim]: Requesting list of world names.
+[create-22] [INFO] [1789188781.320890634] [ros_gz_sim]: Requesting list of world names.
+[create-23] [INFO] [1789188781.337029761] [ros_gz_sim]: Requesting list of world names.
+[create-24] [INFO] [1789188781.332203236] [ros_gz_sim]: Requesting list of world names.
+[create-26] [INFO] [1789188781.342421243] [ros_gz_sim]: Requesting list of world names.
+[create-27] [INFO] [1789188781.351466222] [ros_gz_sim]: Requesting list of world names.
+[create-21] [INFO] [1789188781.354835796] [ros_gz_sim]: Requesting list of world names.
+[create-31] [INFO] [1789188781.365691148] [ros_gz_sim]: Requesting list of world names.
+[create-29] [INFO] [1789188781.365901037] [ros_gz_sim]: Requesting list of world names.
+[create-25] [INFO] [1789188781.366312908] [ros_gz_sim]: Requesting list of world names.
+[create-30] [INFO] [1789188781.395801182] [ros_gz_sim]: Requesting list of world names.
+[create-28] [INFO] [1789188781.399344550] [ros_gz_sim]: Requesting list of world names.
+[INFO] [spawner-32]: process started with pid [188702]
+[INFO] [spawner-33]: process started with pid [188704]
+[INFO] [spawner-34]: process started with pid [188706]
+[INFO] [spawner-35]: process started with pid [188708]
+[INFO] [spawner-36]: process started with pid [188710]
+[INFO] [spawner-37]: process started with pid [188712]
+[INFO] [spawner-38]: process started with pid [188714]
+[spawner-32] [INFO] [1789188784.474207887] [spawner_joint_state_broadcaster]: waiting for service /controller_manager/list_controllers to become available...
+[spawner-34] [INFO] [1789188784.480188100] [spawner_arm_right_controller]: [96mSetting controller param "params_file" to "['/opt/erc_ws/install/erc_bringup/share/erc_bringup/config/controller_params.yaml']" for [1marm_right_controller[0m
+[bash-1] [INFO] [1789188784.485399363] [controller_manager]: Loading controller 'arm_right_controller'
+[spawner-35] [INFO] [1789188784.487763983] [spawner_head_controller]: [96mSetting controller param "params_file" to "['/opt/erc_ws/install/erc_bringup/share/erc_bringup/config/controller_params.yaml']" for [1mhead_controller[0m
+[spawner-36] [INFO] [1789188784.494751592] [spawner_torso_controller]: [96mSetting controller param "params_file" to "['/opt/erc_ws/install/erc_bringup/share/erc_bringup/config/controller_params.yaml']" for [1mtorso_controller[0m
+[spawner-38] [INFO] [1789188784.504489394] [spawner_gripper_right_controller_raw]: [96mSetting controller param "params_file" to "['/opt/erc_ws/install/erc_bringup/share/erc_bringup/config/controller_params.yaml']" for [1mgripper_right_controller_raw[0m
+[bash-1] [WARN] [1789188784.506503870] [arm_right_controller]: [Deprecated]: "allow_nonzero_velocity_at_trajectory_end" is set to true. The default behavior will change to false.
+[INFO] [gripper_command_clamp.py-39]: process started with pid [188787]
+[create-9] [INFO] [1789188785.376049467] [ros_gz_sim]: Requested creation of entity.
+[create-9] [INFO] [1789188785.376120782] [ros_gz_sim]: OK creation of entity.
+[create-20] [INFO] [1789188785.376077412] [ros_gz_sim]: Requested creation of entity.
+[create-20] [INFO] [1789188785.376114491] [ros_gz_sim]: OK creation of entity.
+[create-22] [INFO] [1789188785.376129163] [ros_gz_sim]: Requested creation of entity.
+[create-22] [INFO] [1789188785.376163539] [ros_gz_sim]: OK creation of entity.
+[create-17] [INFO] [1789188785.376138058] [ros_gz_sim]: Requested creation of entity.
+[create-17] [INFO] [1789188785.376171833] [ros_gz_sim]: OK creation of entity.
+[create-28] [INFO] [1789188785.376270498] [ros_gz_sim]: Requested creation of entity.
+[create-28] [INFO] [1789188785.376302527] [ros_gz_sim]: OK creation of entity.
+[create-24] [INFO] [1789188785.376347247] [ros_gz_sim]: Requested creation of entity.
+[create-24] [INFO] [1789188785.376375150] [ros_gz_sim]: OK creation of entity.
+[create-7] [INFO] [1789188785.376754314] [ros_gz_sim]: Requested creation of entity.
+[create-7] [INFO] [1789188785.377177321] [ros_gz_sim]: OK creation of entity.
+[create-12] [INFO] [1789188785.376856657] [ros_gz_sim]: Requested creation of entity.
+[create-12] [INFO] [1789188785.376913035] [ros_gz_sim]: OK creation of entity.
+[create-8] [INFO] [1789188785.376808881] [ros_gz_sim]: Requested creation of entity.
+[create-8] [INFO] [1789188785.376945033] [ros_gz_sim]: OK creation of entity.
+[create-19] [INFO] [1789188785.377099998] [ros_gz_sim]: Requested creation of entity.
+[create-19] [INFO] [1789188785.377131265] [ros_gz_sim]: OK creation of entity.
+[create-25] [INFO] [1789188785.377656804] [ros_gz_sim]: Requested creation of entity.
+[create-25] [INFO] [1789188785.377689298] [ros_gz_sim]: OK creation of entity.
+[create-14] [INFO] [1789188785.377793291] [ros_gz_sim]: Requested creation of entity.
+[create-14] [INFO] [1789188785.377861632] [ros_gz_sim]: OK creation of entity.
+[create-15] [INFO] [1789188785.378060320] [ros_gz_sim]: Requested creation of entity.
+[create-15] [INFO] [1789188785.378114687] [ros_gz_sim]: OK creation of entity.
+[create-23] [INFO] [1789188785.378179027] [ros_gz_sim]: Requested creation of entity.
+[create-23] [INFO] [1789188785.378210343] [ros_gz_sim]: OK creation of entity.
+[create-26] [INFO] [1789188785.378574837] [ros_gz_sim]: Requested creation of entity.
+[create-26] [INFO] [1789188785.378673659] [ros_gz_sim]: OK creation of entity.
+[create-11] [INFO] [1789188785.378793552] [ros_gz_sim]: Requested creation of entity.
+[create-11] [INFO] [1789188785.378850165] [ros_gz_sim]: OK creation of entity.
+[create-10] [INFO] [1789188785.379722472] [ros_gz_sim]: Requested creation of entity.
+[create-10] [INFO] [1789188785.379752126] [ros_gz_sim]: OK creation of entity.
+[create-18] [INFO] [1789188785.379965001] [ros_gz_sim]: Requested creation of entity.
+[create-18] [INFO] [1789188785.379993907] [ros_gz_sim]: OK creation of entity.
+[create-16] [INFO] [1789188785.380108893] [ros_gz_sim]: Requested creation of entity.
+[create-16] [INFO] [1789188785.380133995] [ros_gz_sim]: OK creation of entity.
+[create-13] [INFO] [1789188785.380130290] [ros_gz_sim]: Requested creation of entity.
+[create-13] [INFO] [1789188785.380158309] [ros_gz_sim]: OK creation of entity.
+[create-27] [INFO] [1789188785.380766137] [ros_gz_sim]: Requested creation of entity.
+[create-27] [INFO] [1789188785.380796173] [ros_gz_sim]: OK creation of entity.
+[create-29] [INFO] [1789188785.380931763] [ros_gz_sim]: Requested creation of entity.
+[create-29] [INFO] [1789188785.380975005] [ros_gz_sim]: OK creation of entity.
+[create-21] [INFO] [1789188785.381929357] [ros_gz_sim]: Requested creation of entity.
+[create-21] [INFO] [1789188785.381988361] [ros_gz_sim]: OK creation of entity.
+[create-31] [INFO] [1789188785.383138985] [ros_gz_sim]: Requested creation of entity.
+[create-31] [INFO] [1789188785.383178158] [ros_gz_sim]: OK creation of entity.
+[create-30] [INFO] [1789188785.393496514] [ros_gz_sim]: Requested creation of entity.
+[create-30] [INFO] [1789188785.393536355] [ros_gz_sim]: OK creation of entity.
+[gripper_command_clamp.py-39] [INFO] [1789188785.426740971] [gripper_command_clamp]: Gripper command clamp active for: gripper_left_controller, gripper_right_controller
+[INFO] [create-11]: process has finished cleanly [pid 188186]
+[INFO] [create-29]: process has finished cleanly [pid 188487]
+[INFO] [create-7]: process has finished cleanly [pid 188178]
+[INFO] [create-12]: process has finished cleanly [pid 188188]
+[INFO] [create-10]: process has finished cleanly [pid 188184]
+[INFO] [create-22]: process has finished cleanly [pid 188210]
+[INFO] [create-19]: process has finished cleanly [pid 188202]
+[INFO] [create-8]: process has finished cleanly [pid 188180]
+[INFO] [create-9]: process has finished cleanly [pid 188182]
+[INFO] [create-14]: process has finished cleanly [pid 188192]
+[INFO] [create-25]: process has finished cleanly [pid 188293]
+[INFO] [create-16]: process has finished cleanly [pid 188196]
+[INFO] [create-26]: process has finished cleanly [pid 188351]
+[INFO] [create-27]: process has finished cleanly [pid 188446]
+[INFO] [create-15]: process has finished cleanly [pid 188194]
+[INFO] [create-21]: process has finished cleanly [pid 188206]
+[INFO] [create-20]: process has finished cleanly [pid 188204]
+[INFO] [create-23]: process has finished cleanly [pid 188212]
+[INFO] [create-31]: process has finished cleanly [pid 188510]
+[INFO] [create-24]: process has finished cleanly [pid 188224]
+[INFO] [create-13]: process has finished cleanly [pid 188190]
+[INFO] [create-28]: process has finished cleanly [pid 188460]
+[INFO] [create-17]: process has finished cleanly [pid 188198]
+[INFO] [create-18]: process has finished cleanly [pid 188200]
+[INFO] [create-30]: process has finished cleanly [pid 188507]
+[bash-1] [INFO] [1789188787.190015474] [controller_manager]: Loading controller 'head_controller'
+[spawner-34] [INFO] [1789188787.190244659] [spawner_arm_right_controller]: [94mLoaded [1marm_right_controller[0m
+[bash-1] [WARN] [1789188787.197343353] [head_controller]: [Deprecated]: "allow_nonzero_velocity_at_trajectory_end" is set to true. The default behavior will change to false.
+[bash-1] [INFO] [1789188787.198470239] [controller_manager]: Loading controller 'torso_controller'
+[spawner-35] [INFO] [1789188787.198508520] [spawner_head_controller]: [94mLoaded [1mhead_controller[0m
+[spawner-33] [INFO] [1789188787.206882233] [spawner_arm_left_controller]: [96mSetting controller param "params_file" to "['/opt/erc_ws/install/erc_bringup/share/erc_bringup/config/controller_params.yaml']" for [1marm_left_controller[0m
+[bash-1] [WARN] [1789188787.208611667] [torso_controller]: [Deprecated]: "allow_nonzero_velocity_at_trajectory_end" is set to true. The default behavior will change to false.
+[bash-1] [INFO] [1789188787.209738336] [controller_manager]: Loading controller 'gripper_right_controller_raw'
+[spawner-37] [INFO] [1789188787.210931656] [spawner_gripper_left_controller_raw]: [96mSetting controller param "params_file" to "['/opt/erc_ws/install/erc_bringup/share/erc_bringup/config/controller_params.yaml']" for [1mgripper_left_controller_raw[0m
+[spawner-36] [INFO] [1789188787.211634923] [spawner_torso_controller]: [94mLoaded [1mtorso_controller[0m
+[bash-1] [WARN] [1789188787.217929179] [gripper_right_controller_raw]: [Deprecated]: "allow_nonzero_velocity_at_trajectory_end" is set to true. The default behavior will change to false.
+[bash-1] [INFO] [1789188787.219875608] [controller_manager]: Loading controller 'joint_state_broadcaster'
+[spawner-38] [INFO] [1789188787.220223987] [spawner_gripper_right_controller_raw]: [94mLoaded [1mgripper_right_controller_raw[0m
+[bash-1] [INFO] [1789188787.261236839] [controller_manager]: Loading controller 'gripper_left_controller_raw'
+[spawner-32] [INFO] [1789188787.262857078] [spawner_joint_state_broadcaster]: [94mLoaded [1mjoint_state_broadcaster[0m
+[bash-1] [WARN] [1789188787.265988611] [gripper_left_controller_raw]: [Deprecated]: "allow_nonzero_velocity_at_trajectory_end" is set to true. The default behavior will change to false.
+[bash-1] [INFO] [1789188787.297221706] [controller_manager]: Loading controller 'arm_left_controller'
+[spawner-37] [INFO] [1789188787.298029747] [spawner_gripper_left_controller_raw]: [94mLoaded [1mgripper_left_controller_raw[0m
+[bash-1] [WARN] [1789188787.304499535] [arm_left_controller]: [Deprecated]: "allow_nonzero_velocity_at_trajectory_end" is set to true. The default behavior will change to false.
+[bash-1] [INFO] [1789188787.307821978] [controller_manager]: Configuring controller 'head_controller'
+[bash-1] [INFO] [1789188787.308045156] [head_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[bash-1] [INFO] [1789188787.308073169] [head_controller]: Command interfaces are [position] and state interfaces are [position velocity].
+[bash-1] [INFO] [1789188787.308091501] [head_controller]: Using 'splines' interpolation method.
+[spawner-33] [INFO] [1789188787.308297956] [spawner_arm_left_controller]: [94mLoaded [1marm_left_controller[0m
+[bash-1] [INFO] [1789188787.309406548] [head_controller]: Controller state will be published at 50.00 Hz.
+[bash-1] [INFO] [1789188787.312532200] [head_controller]: Action status changes will be monitored at 20.00 Hz.
+[bash-1] [INFO] [1789188787.316923423] [controller_manager]: Configuring controller 'arm_right_controller'
+[bash-1] [INFO] [1789188787.317089822] [arm_right_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[bash-1] [INFO] [1789188787.317106514] [arm_right_controller]: Command interfaces are [position] and state interfaces are [position velocity].
+[bash-1] [INFO] [1789188787.317115922] [arm_right_controller]: Using 'splines' interpolation method.
+[bash-1] [INFO] [1789188787.317339575] [arm_right_controller]: Controller state will be published at 50.00 Hz.
+[bash-1] [INFO] [1789188787.319028915] [arm_right_controller]: Action status changes will be monitored at 20.00 Hz.
+[bash-1] [INFO] [1789188787.322499216] [controller_manager]: Configuring controller 'torso_controller'
+[bash-1] [INFO] [1789188787.322604126] [torso_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[bash-1] [INFO] [1789188787.322620550] [torso_controller]: Command interfaces are [position] and state interfaces are [position].
+[bash-1] [INFO] [1789188787.322628614] [torso_controller]: Using 'splines' interpolation method.
+[bash-1] [INFO] [1789188787.322945115] [torso_controller]: Controller state will be published at 50.00 Hz.
+[bash-1] [INFO] [1789188787.324499244] [torso_controller]: Action status changes will be monitored at 20.00 Hz.
+[bash-1] [INFO] [1789188787.327531270] [controller_manager]: Configuring controller 'gripper_right_controller_raw'
+[bash-1] [INFO] [1789188787.327671251] [gripper_right_controller_raw]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[bash-1] [INFO] [1789188787.327700813] [gripper_right_controller_raw]: Command interfaces are [position] and state interfaces are [position velocity].
+[bash-1] [INFO] [1789188787.327710720] [gripper_right_controller_raw]: Using 'splines' interpolation method.
+[bash-1] [INFO] [1789188787.327890865] [gripper_right_controller_raw]: Controller state will be published at 50.00 Hz.
+[bash-1] [INFO] [1789188787.329617081] [gripper_right_controller_raw]: Action status changes will be monitored at 20.00 Hz.
+[bash-1] [INFO] [1789188787.332713105] [controller_manager]: Configuring controller 'joint_state_broadcaster'
+[bash-1] [INFO] [1789188787.332801851] [joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[bash-1] [INFO] [1789188787.337024321] [controller_manager]: Configuring controller 'arm_left_controller'
+[bash-1] [INFO] [1789188787.337147873] [arm_left_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[bash-1] [INFO] [1789188787.337162031] [arm_left_controller]: Command interfaces are [position] and state interfaces are [position velocity].
+[bash-1] [INFO] [1789188787.337172070] [arm_left_controller]: Using 'splines' interpolation method.
+[bash-1] [INFO] [1789188787.337687422] [arm_left_controller]: Controller state will be published at 50.00 Hz.
+[bash-1] [INFO] [1789188787.339458151] [arm_left_controller]: Action status changes will be monitored at 20.00 Hz.
+[bash-1] [INFO] [1789188787.346028109] [controller_manager]: Configuring controller 'gripper_left_controller_raw'
+[bash-1] [INFO] [1789188787.346186415] [gripper_left_controller_raw]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[bash-1] [INFO] [1789188787.346208138] [gripper_left_controller_raw]: Command interfaces are [position] and state interfaces are [position velocity].
+[bash-1] [INFO] [1789188787.346220283] [gripper_left_controller_raw]: Using 'splines' interpolation method.
+[bash-1] [INFO] [1789188787.346543641] [gripper_left_controller_raw]: Controller state will be published at 50.00 Hz.
+[bash-1] [INFO] [1789188787.348239771] [gripper_left_controller_raw]: Action status changes will be monitored at 20.00 Hz.
+[spawner-35] [INFO] [1789188787.359815781] [spawner_head_controller]: [92mConfigured and activated [1mhead_controller[0m
+[spawner-34] [INFO] [1789188787.369469142] [spawner_arm_right_controller]: [92mConfigured and activated [1marm_right_controller[0m
+[spawner-38] [INFO] [1789188787.379551616] [spawner_gripper_right_controller_raw]: [92mConfigured and activated [1mgripper_right_controller_raw[0m
+[spawner-32] [INFO] [1789188787.388830929] [spawner_joint_state_broadcaster]: [92mConfigured and activated [1mjoint_state_broadcaster[0m
+[spawner-36] [INFO] [1789188787.399096770] [spawner_torso_controller]: [92mConfigured and activated [1mtorso_controller[0m
+[spawner-33] [INFO] [1789188787.408828053] [spawner_arm_left_controller]: [92mConfigured and activated [1marm_left_controller[0m
+[spawner-37] [INFO] [1789188787.419547246] [spawner_gripper_left_controller_raw]: [92mConfigured and activated [1mgripper_left_controller_raw[0m
+[INFO] [spawner-35]: process has finished cleanly [pid 188708]
+[INFO] [spawner-34]: process has finished cleanly [pid 188706]
+[INFO] [spawner-36]: process has finished cleanly [pid 188710]
+[INFO] [spawner-38]: process has finished cleanly [pid 188714]
+[INFO] [spawner-37]: process has finished cleanly [pid 188712]
+[INFO] [spawner-33]: process has finished cleanly [pid 188704]
+[INFO] [spawner-32]: process has finished cleanly [pid 188702]
+[INFO] [depth_to_cloud-40]: process started with pid [188984]
+[depth_to_cloud-40] [INFO] [1789188794.636657447] [depth_to_cloud]: depth_to_cloud: /head_front_camera/head_front_camera/depth/image_rect_raw + /head_front_camera/head_front_camera/color/image_raw -> /head_front_camera/head_front_camera/depth/color/points (stride=2)
+[bash-1] [INFO] [1789188819.417887373] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789188819.418018470] [torso_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188836.498347035] [torso_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188836.787597584] [arm_right_controller]: Received new action goal
+[bash-1] [INFO] [1789188836.787670941] [arm_right_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188838.829917394] [arm_right_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188839.174640849] [arm_left_controller]: Received new action goal
+[bash-1] [INFO] [1789188839.174705256] [arm_left_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188841.294019269] [arm_left_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188841.657840948] [head_controller]: Received new action goal
+[bash-1] [INFO] [1789188841.657911876] [head_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188842.794681741] [head_controller]: Goal reached, success!
+[parameter_bridge-3] [INFO] [1789188843.332047139] [ros_gz_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[bash-1] [INFO] [1789188849.477583336] [head_controller]: Received new action goal
+[bash-1] [INFO] [1789188849.477650417] [head_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188850.586407777] [head_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188862.713290099] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789188862.713336125] [torso_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188865.656330967] [torso_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188865.838001570] [head_controller]: Received new action goal
+[bash-1] [INFO] [1789188865.838059513] [head_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188866.972134704] [head_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188887.994463396] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789188887.994553591] [torso_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188889.365210233] [torso_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188889.737624270] [head_controller]: Received new action goal
+[bash-1] [INFO] [1789188889.737691008] [head_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188891.119614035] [head_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188892.734085286] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789188892.734140141] [torso_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188896.141881188] [torso_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188896.368311387] [head_controller]: Received new action goal
+[bash-1] [INFO] [1789188896.368392610] [head_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188897.714898459] [head_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188925.194551693] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789188925.194600388] [torso_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188928.242581098] [torso_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188931.975826111] [arm_right_controller]: Received new action goal
+[bash-1] [INFO] [1789188931.975911111] [arm_right_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188936.274196829] [arm_right_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188962.453371379] [arm_right_controller]: Received new action goal
+[bash-1] [INFO] [1789188962.453490829] [arm_right_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188964.233270605] [arm_right_controller]: Goal reached, success!
+[bash-1] [INFO] [1789188987.979969160] [arm_right_controller]: Received new action goal
+[bash-1] [INFO] [1789188987.980104341] [arm_right_controller]: Accepted new action goal
+[bash-1] [INFO] [1789188990.536903163] [arm_right_controller]: Goal reached, success!
+[bash-1] [INFO] [1789189013.115933676] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789189013.115986113] [torso_controller]: Accepted new action goal
+[bash-1] [INFO] [1789189025.425248031] [torso_controller]: Goal reached, success!
+[bash-1] [INFO] [1789189041.632783465] [arm_right_controller]: Received new action goal
+[bash-1] [INFO] [1789189041.632856927] [arm_right_controller]: Accepted new action goal
+[bash-1] [INFO] [1789189049.698882293] [arm_right_controller]: Goal reached, success!
+[bash-1] [INFO] [1789189049.761610345] [torso_controller]: Received new action goal
+[bash-1] [INFO] [1789189049.761680976] [torso_controller]: Accepted new action goal
