@@ -29,19 +29,54 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def _repo_root():
-    """Best guess at the workspace root, for the evidence directory.
+    """Where the evidence directory lives.
 
-    Walks up from this file looking for an ``erc_images`` directory - true of a
-    plain clone and of the mounted container workspace alike.  Falls back to the
-    current working directory.  Nothing here needs write access to ``/``.
+    Phase 1 asks for the annotated images in a folder named ``erc_images`` in
+    the team's repository, so that is what this looks for - not merely for
+    somewhere writable.  It matters because the judges clone this repository
+    into a workspace and build it: the launch file then runs from ``install/``,
+    several directories away from the checkout that has to receive the images.
+
+    Searched in order:
+
+    1. up from this file, for a directory holding ``erc_images`` - true of a
+       plain clone and of a symlink-installed or mounted workspace;
+    2. a sibling checkout under ``src/``, which is where a cloned repository
+       sits once it has been built and the launch file has moved to
+       ``install/``;
+    3. the working directory, so a run still writes its evidence somewhere
+       rather than not at all.
     """
     here = os.path.dirname(os.path.abspath(__file__))
+    roots = []
     for _ in range(8):
         here = os.path.dirname(here)
         if not here or here == os.sep:
             break
         if os.path.isdir(os.path.join(here, 'erc_images')):
             return here
+        roots.append(here)
+
+    # The checkout, from a workspace root.  Prefer the repository that actually
+    # holds this package over any other clone that happens to sit beside it.
+    for base in roots + [os.getcwd()]:
+        src = os.path.join(base, 'src')
+        if not os.path.isdir(src):
+            continue
+        try:
+            entries = sorted(os.listdir(src))
+        except OSError:
+            continue
+        for name in entries:
+            checkout = os.path.join(src, name)
+            if (os.path.isdir(os.path.join(checkout, 'erc_images'))
+                    and os.path.isdir(
+                        os.path.join(checkout, 'src', 'rafeeq_solution'))):
+                return checkout
+        for name in entries:
+            checkout = os.path.join(src, name)
+            if os.path.isdir(os.path.join(checkout, 'erc_images')):
+                return checkout
     return os.getcwd()
 
 

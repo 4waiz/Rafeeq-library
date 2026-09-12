@@ -1101,3 +1101,56 @@ def test_the_carry_ramp_works_in_the_odom_frame():
     # Growth is rate-limited; decay is not, or the base cannot stop in time
     # from the carry's top speed and coasts into the table.
     assert 'def _ramp_up(' in nav
+
+
+def test_the_evidence_images_land_in_the_repository_after_a_clean_build():
+    """Phase 1 asks for the annotated images in an erc_images folder in the
+    team's repository, and the judges get there by cloning and building.
+
+    That is the case this has to survive: after colcon build the launch file
+    runs from install/, several directories from the checkout that has to
+    receive the images, and walking up from it finds no erc_images at all.
+    The delivering take wrote its evidence to the workspace root for exactly
+    this reason, where nobody looking in the repository would have found it.
+    """
+    import re
+    import shutil
+    import tempfile
+
+    src = open(os.path.join(PKG, 'launch', 'solution.launch.py'),
+               encoding='utf-8').read()
+    fn = re.search(r'def _repo_root\(\):.*?\n    return os\.getcwd\(\)\n',
+                   src, re.S)
+    assert fn, 'the evidence directory is no longer resolved by _repo_root'
+
+    tmp = tempfile.mkdtemp()
+    try:
+        ws = os.path.join(tmp, 'ws')
+        repo = os.path.join(ws, 'src', 'Rafeeq-library')
+        os.makedirs(os.path.join(repo, 'erc_images'))
+        os.makedirs(os.path.join(repo, 'src', 'rafeeq_solution'))
+        installed = os.path.join(ws, 'install', 'rafeeq_solution', 'share',
+                                 'rafeeq_solution', 'launch')
+        os.makedirs(installed)
+
+        def resolve(launch_file, cwd):
+            ns = {'os': os, '__file__': launch_file}
+            exec(compile(fn.group(0), 'launch', 'exec'), ns)
+            here = os.getcwd()
+            os.chdir(cwd)
+            try:
+                return os.path.realpath(ns['_repo_root']())
+            finally:
+                os.chdir(here)
+
+        built = resolve(os.path.join(installed, 'solution.launch.py'), ws)
+        assert built == os.path.realpath(repo), (
+            'a built clone writes its evidence to {} instead of the '
+            'repository'.format(built))
+
+        in_place = resolve(
+            os.path.join(repo, 'src', 'rafeeq_solution', 'launch',
+                         'solution.launch.py'), tmp)
+        assert in_place == os.path.realpath(repo)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)

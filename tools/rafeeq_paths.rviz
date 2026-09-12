@@ -1,0 +1,112 @@
+# RViz 2 layout for the report's navigation figure: the path the navigation
+# node planned against the path the base actually drove.
+#
+# The organisers' own src/erc_bringup/rviz/competition.rviz is left alone - the
+# environment is not ours to modify.  This adds only two nav_msgs/Path displays
+# on top of the robot and the arena, and fixes the frame to odom, which is the
+# frame the navigation node plans and drives in.  No solution behaviour depends
+# on this file; it exists so the figure can be reproduced.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+    Tree Height: 640
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 24
+      Color: 160; 160; 160
+      Line Style:
+        Line Width: 0.02
+        Value: Lines
+      Reference Frame: <Fixed Frame>
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Enabled: true
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Alpha: 1
+      Visual Enabled: true
+      Collision Enabled: false
+    - Class: rviz_default_plugins/Path
+      Name: Planned path
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /rafeeq/nav/planned_path
+      Color: 25; 200; 90
+      Alpha: 1
+      Line Style: Billboards
+      Line Width: 0.05
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0.01
+      Pose Style: None
+    - Class: rviz_default_plugins/Path
+      Name: Executed path
+      Enabled: true
+      Topic:
+        Depth: 200
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        Value: /rafeeq/nav/executed_path
+      Color: 245; 130; 30
+      Alpha: 1
+      Line Style: Billboards
+      Line Width: 0.035
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0.02
+      Pose Style: None
+    - Class: rviz_default_plugins/LaserScan
+      Name: Front lidar
+      Enabled: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Best Effort
+        Value: /scan_front_raw
+      Color: 70; 120; 200
+      Size (m): 0.03
+      Style: Points
+      Decay Time: 0
+  Global Options:
+    Background Color: 255; 255; 255
+    Fixed Frame: odom
+    Frame Rate: 20
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 8.5
+      Focal Point:
+        X: 1.0
+        Y: 0.0
+        Z: 0.4
+      Pitch: 0.92
+      Yaw: 4.55
+      Target Frame: odom
+      Near Clip Distance: 0.01
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 1000
+  Width: 1500
+  Hide Left Dock: false
+  Hide Right Dock: true
