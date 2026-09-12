@@ -80,7 +80,7 @@ Four nodes, no direct coupling — everything goes through the mission node.
 | `perception_node` | Number plates, book colour + row, book 3D position, red bin, annotated images, `/erc/*` topics |
 | `navigation_node` | Holonomic waypoint driving on odometry, with separate speed and tolerance profiles per leg |
 | `manipulation_node` | Arm / gripper / torso / head, every motion verified against feedback |
-| `mission_node` | The state machine that sequences all of it — 31 states, none of which advances on a timeout |
+| `mission_node` | The state machine that sequences all of it — 33 states, none of which advances on a timeout |
 
 Supporting modules, all ROS-free and unit-tested: `arena.py` (measured
 constants and frame maths), `kinematics.py` (URDF-parsed damped least-squares

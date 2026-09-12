@@ -84,13 +84,39 @@ out. Those five records predate the extraction fix: each one ends
 identification and measurement evidence they are, not as delivery evidence.
 
 <div align="center">
-<img src="erc_images/shelf_column_20260910_075409_862.png" width="47%" alt="Shelf column identification"/>
-<img src="erc_images/target_book_20260910_075442_905.png" width="47%" alt="Target book identification"/>
+<img src="erc_images/shelf_column_20260912_045431_732.png" width="47%" alt="Shelf column identification during the delivering run"/>
+<img src="erc_images/target_book_20260912_045519_419.png" width="47%" alt="Target book identification during the delivering run"/>
 <br/>
-<sub>Live evidence written by the running solution during the seed-101
-identification trial (`T01` in [`results/`](results/)): the target shelf
-column, and the target book with its measured position.</sub>
+<sub>Written by the solution <b>during the delivering run itself</b>, not staged
+afterwards. Left: every plate read and the mapping it produced — <i>requested
+column 2 → physical shelf slot 3</i>, plates <code>3@slot1, 5@slot2, 2@slot3,
+1@slot4, 4@slot5</code>, which is why the delivered model is named
+<code>book_col_3_…</code>. Right: the chosen book with its measured world
+position and its offset from the column centre.</sub>
 </div>
+
+## What we built
+
+The organisers supply the arena, the task and the TIAGo Pro integration. Team
+Kanban wrote everything in [`src/rafeeq_solution/`](src/rafeeq_solution/) — four
+ROS 2 nodes and six ROS-free modules, about 10 000 lines, with 162 offline tests
+that need neither ROS nor Gazebo to run.
+
+| What we had to build | Why it was not off the shelf |
+|---|---|
+| **A grasp planner that solves poses from a measurement** ([`grasp.py`](src/rafeeq_solution/rafeeq_solution/grasp.py)) | The organisers jitter every book by up to ±0.25 m — three times the gripper's 0.082 m opening — so stored poses aimed at column centres miss almost every book. Poses are solved per run from where the book actually is. |
+| **Our own inverse kinematics** ([`kinematics.py`](src/rafeeq_solution/rafeeq_solution/kinematics.py)) | The repository ships no MoveIt configuration for TIAGo Pro: no SRDF, no planning group, no kinematics plugin. We parse the competition URDF and solve the 8-DOF chain with damped least squares, seeded from a sampled workspace. Its forward kinematics matches the running simulator to **0.07 mm**. |
+| **Holonomic waypoint navigation** ([`navigation_node.py`](src/rafeeq_solution/rafeeq_solution/navigation_node.py)) | `simulation.launch.py` never brings Nav2 up — no map server, no AMCL, no costmaps, no `map` frame. We drive odometry waypoints directly, with a separate speed, acceleration and tolerance profile per leg, because the leg that carries a book cannot be driven like the leg that does not. |
+| **Perception that measures, not guesses** ([`perception_node.py`](src/rafeeq_solution/rafeeq_solution/perception_node.py), [`vision.py`](src/rafeeq_solution/rafeeq_solution/vision.py)) | Digit-template plate reading, HSV book detection with row ordering confirmed by height, and depth deprojection that takes the book's near surface rather than a median blended with the shelf behind it. |
+| **A state machine where nothing advances on a timeout** ([`mission_node.py`](src/rafeeq_solution/rafeeq_solution/mission_node.py)) | Thirty-three states, each gated on an observation. Sixteen of them originally treated a timeout as success — the single largest class of defect we found in our own code. |
+| **A trial recorder that refuses to record a bad take** ([`tools/record_trial.sh`](tools/record_trial.sh)) | It abandons a take if the arena never spawns, if the controller spawners lose their startup race, or if the viewer came up without the robot in its scene — the last one after a finished, delivering take had to be thrown away because the robot was not in the picture. |
+
+The harder half of the work was not writing that code but finding out why it
+did not work. Everything measured along the way is in
+[`docs/measured_environment.md`](docs/measured_environment.md),
+[`docs/grasp_blocker.md`](docs/grasp_blocker.md) and
+[`docs/odometry_drift.md`](docs/odometry_drift.md), with the diagnostics that
+reproduce each number in [`tools/diagnostics/`](tools/diagnostics/).
 
 ## Quick start for judges
 
@@ -117,7 +143,7 @@ Getting the container up from scratch is in [Installation](#installation).
 
 ## What happens in a run
 
-One state machine, thirty-one states, every one of them gated on an
+One state machine, thirty-three states, every one of them gated on an
 observation. Nothing advances on a timeout.
 
 1. **Wait for readiness**, observed — controllers and joint states, not a sleep.
