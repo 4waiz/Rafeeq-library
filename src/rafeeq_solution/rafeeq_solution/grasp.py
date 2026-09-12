@@ -198,10 +198,13 @@ class GraspPlanner(object):
     #: How far back the gripper tries to pull the book out of the shelf.
     #: A book's back face starts at 2.980 and the shelf front plane is at
     #: 2.755, so 0.225 m is needed to clear the shelf completely.  0.28 leaves
-    #: 0.055 m of clearance.  It used to be 0.42, and at the gentle retreat
-    #: speed that extra 0.14 m cost about 2.5 s - out of a grip that, measured,
-    #: only keeps the book 12-14 s once it hangs free.
-    EXTRACT = 0.28
+    #: clearance.  It used to be 0.42, and at the gentle retreat speed that
+    #: extra 0.14 m cost about 2.5 s - out of a grip that, measured, only
+    #: keeps the book 6-11 s once it hangs free.  0.34 rather than 0.28
+    #: because the leg is allowed to stop 0.06 m short (the carry tolerance):
+    #: at 0.28 that shortfall left the book's rear level with the board edge,
+    #: and the turn that followed dragged it out of the pads.
+    EXTRACT = 0.34
     #: Approach tilts tried, in degrees about the finger axis - the single
     #: most important number in this file.
     #:
@@ -915,7 +918,9 @@ class GraspPlanner(object):
         # tried for the extra slide margin: at +0.054 m the book swung twice as
         # far (pitch 1.52 -> 0.45 rad against 1.52 -> 1.06 at +0.072 m) and
         # slipped out during the retreat itself.  The slow creep on the carry
-        # is dealt with by rolling the book flat (``roll_book``) instead.
+        # is not dealt with here at all: rolling the book flat was tried and
+        # reverted (it flung the book), so the carry is instead made short
+        # enough to finish inside the grip's 6-11 s.  See docs/grasp_blocker.md.
         above = sorted((c for c in candidates if c[1] > 0.0),
                        key=lambda c: -c[1])
         below = [c for c in candidates if c[1] <= 0.0]

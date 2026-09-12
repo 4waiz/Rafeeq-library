@@ -675,6 +675,36 @@ def test_the_direct_carry_never_drives_the_torso_into_the_table():
     assert -1.255 + node.CARRY_BIN_MARGIN <= x - 0.600 <= -0.695 - node.CARRY_BIN_MARGIN
 
 
+def test_the_direct_carry_records_the_height_it_opens_the_gripper_at():
+    """The record has to say where the book was let go from.
+
+    The arm does not move on the direct carry, so the release height is the
+    height the book is held at less whatever the torso takes out on the way.
+    Left unrecorded it defaulted to zero, and the trial record then read
+    "released at z=0.000 m, -0.740 m above the bin floor" - a book let go
+    below the floor of the bin."""
+    node = make()
+    node.bin_point = (-0.975, 0.0, 0.95)
+    _x, _y, torso = node._direct_carry(HELD_HIGH)
+    assert torso is not None, 'this fixture is meant to drop the torso'
+    dropped = 0.350 - torso
+    assert node.plan_poses['release_z'] == pytest.approx(1.660 - dropped)
+    kind, reason = node._classify_placement()
+    assert kind == 'drop'
+    assert '0.000' not in reason
+
+
+def test_an_unrecorded_release_height_is_reported_as_unrecorded():
+    """Silence is not a measurement.  A missing height stays a drop - the
+    conservative call - but the reason says why rather than quoting a zero."""
+    node = make()
+    node.plan_poses = {}
+    kind, reason = node._classify_placement()
+    assert kind == 'drop'
+    assert 'not recorded' in reason
+    assert '0.000' not in reason
+
+
 def test_a_bin_out_of_reach_from_the_table_edge_takes_the_long_way():
     node = make()
     node.bin_point = (-1.155, -0.08, 0.95)
@@ -692,15 +722,22 @@ def _carrying(node, bin_point=(-0.975, 0.0, 0.95)):
     return node
 
 
-def test_the_bin_is_re_measured_on_the_way_in():
-    """The bin was measured before the shelf trip; about 5 m of driving of
-    odometry drift stands between that and the release, against a bin only
-    0.155 m wide either side."""
+def test_a_bin_fix_on_the_move_does_not_restart_the_drive():
+    """A fix that arrives mid-drive is recorded, never acted on.
+
+    Re-issuing the goal resets the navigation ramp to standstill: the command
+    collapses from 0.45 m/s to 0.004 m/s in one tick, a ~9 m/s^2 spike, which
+    is precisely what shakes the book out of the pads - and it then costs
+    5.6 s to climb back, out of a grip that lasts 6-11 s.
+    """
     node = _carrying(make())
+    before = node.carry_goal
+    goals = len([t for t, _ in node.published if t == '/rafeeq/nav/goal'])
     node.on_target_point(_point(-0.975, 0.12, 0.95))
     node.tick()
-    assert abs(node.carry_goal[1] - (0.12 + 0.170)) < 1e-9, node.carry_goal
-    assert node._carry_reaims == 1
+    assert node.carry_goal == before, node.carry_goal
+    assert len([t for t, _ in node.published
+                if t == '/rafeeq/nav/goal']) == goals
     assert node.state == 'CARRY_TO_BIN'
 
 

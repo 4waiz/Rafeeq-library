@@ -164,8 +164,17 @@ class NavigationNode(Node):
         # gripper) is plenty - and it skips the slow proportional creep over
         # the last 0.1 m, which cost 1-2 s of a carry that was finishing
         # within a second or two of the book letting go.
+        # 0.06, not 0.10: this tolerance governs the retreat too, and the
+        # book's rear is measured leaving the board between 0.233 m and
+        # 0.247 m of retreat.  At 0.10 the leg could finish at 0.24 m - inside
+        # that band - and the drive then dragged a book that was still resting
+        # on the shelf.  The one take that stopped at 0.221 m gave the
+        # shortest carry on record.
         self.declare_parameter('carry_position_tolerance', 0.06)
-        self.declare_parameter('carry_yaw_tolerance', 0.08)
+        # 0.04 rather than 0.08 rad: at a gripper 0.555 m ahead of the base
+        # that halves the sideways error at the release, and it costs no time
+        # because the base turns while it translates.
+        self.declare_parameter('carry_yaw_tolerance', 0.04)
         self.declare_parameter('approach_slowdown', 0.35)
         self.declare_parameter('obstacle_stop_distance', 0.42)
         self.declare_parameter('obstacle_half_angle_deg', 35.0)
@@ -209,6 +218,13 @@ class NavigationNode(Node):
         #: with the book hanging from the pads, and the book came out after
         #: 3.4 s instead of 8.8 s on the run before it.
         self.declare_parameter('smooth_max_angular', 0.60)
+        #: The carry approaches its goal harder than an ordinary leg.  With the
+        #: ordinary gain the last 0.2 m is crawled at 0.05-0.12 m/s, about
+        #: 2.5 s of a drive that the book beat by a second.  Overshooting is
+        #: harmless here: the aim point is deliberately short of the bin's
+        #: middle (mission_node.CARRY_NEAR_OFFSET, 0.05 m), so drifting past
+        #: it lands the book more centrally.
+        self.declare_parameter('smooth_kp_linear', 2.0)
 
         self.spawn_yaw = float(self.get_parameter('spawn_yaw').value)
         self.max_linear = float(self.get_parameter('max_linear').value)
@@ -306,6 +322,8 @@ class NavigationNode(Node):
             self.get_parameter('smooth_max_linear').value)
         self.smooth_max_angular = float(
             self.get_parameter('smooth_max_angular').value)
+        self.smooth_kp_linear = float(
+            self.get_parameter('smooth_kp_linear').value)
         self.smooth_next = False
         self.goal_smooth = False
         self.create_subscription(
@@ -417,6 +435,9 @@ class NavigationNode(Node):
                     self.gentle_max_linear, self.gentle_max_angular,
                     self.gentle_linear_accel, self.gentle_angular_accel))
         self.goal_started = self.now()
+        # A goal arriving while the base is already driving keeps the ramp
+        # state; one arriving from rest starts it from zero.
+        self.started_from_rest = self.state != 'moving'
         self.state = 'moving'
 
         waypoint = PoseStamped()
@@ -514,8 +535,10 @@ class NavigationNode(Node):
         scale = min(1.0, self.slowdown + distance)
         cap_linear = (self.precise_max_linear if self.goal_precise
                       else self.max_linear)
-        vx = clamp(self.kp_linear * ex, cap_linear) * scale
-        vy = clamp(self.kp_linear * ey, cap_linear) * scale
+        kp_linear = (self.smooth_kp_linear if self.goal_smooth
+                     else self.kp_linear)
+        vx = clamp(kp_linear * ex, cap_linear) * scale
+        vy = clamp(kp_linear * ey, cap_linear) * scale
 
         # Line up before going in, not while going in.
         #
@@ -556,8 +579,14 @@ class NavigationNode(Node):
         # and only ramps: it has to be quick, because the book only stays in
         # the pads for so long once it hangs free.
         if self.goal_gentle or self.goal_smooth:
-            if getattr(self, 'last_cmd_goal', None) is not self.goal:
+            # Reset the ramp only when the base really is at rest.  Keying
+            # this on the goal object meant a goal re-issued mid-drive threw
+            # away the speed the base actually had: the command collapsed from
+            # 0.45 m/s to 0.004 m/s in one tick, a ~9 m/s^2 spike, and then
+            # took 5.6 s to climb back.
+            if getattr(self, 'started_from_rest', True):
                 self.last_cmd = (0.0, 0.0, 0.0)
+                self.started_from_rest = False
             if self.goal_gentle:
                 cap_v, cap_w = self.gentle_max_linear, self.gentle_max_angular
                 dv = self.gentle_linear_accel * self.control_period

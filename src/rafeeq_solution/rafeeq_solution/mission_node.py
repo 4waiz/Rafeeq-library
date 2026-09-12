@@ -313,8 +313,9 @@ class MissionNode(Node):
         # which allows it for gripper links only, so an arm link striking a
         # book still counts here as anywhere else.
         manipulating = self.state in (
-            'NAV_GRASP', 'CLOSE_GRASP', 'LIFT', 'REFINE', 'RETREAT', 'CARRY',
-            'CARRY_TO_BIN', 'PLACE', 'RELEASE', 'BACK_OFF')
+            'NAV_GRASP', 'CLOSE_GRASP', 'LIFT', 'REFINE', 'RETREAT',
+            'CONFIRM_HOLD', 'CARRY', 'CARRY_TO_BIN', 'PLACE', 'RELEASE',
+            'BACK_OFF')
         self.collisions.manipulating = manipulating
         for event in self.collisions.ingest(msg, self.now(), self.state or ''):
             self.get_logger().warn(
@@ -990,7 +991,7 @@ class MissionNode(Node):
     def _direct_carry(self, detail):
         """``(base_x, base_y, torso or None)`` for a drive-and-drop, or None.
 
-        The pinch only keeps the book for 10-20 s once it hangs free
+        The pinch only keeps the book for 6-11 s once it hangs free
         (docs/grasp_blocker.md), and the ordinary return - drive to the start
         zone, look for the bin, line up on it, plan and execute a placement -
         takes 25-40 s.  So when the bin was measured before the grasp and the
@@ -1017,6 +1018,13 @@ class MissionNode(Node):
         aim = self._carry_base(self.bin_point, tx, ty)
         if aim is None:
             return None
+        # The arm holds still for the whole carry, so the height the gripper
+        # opens at is the height it is holding the book at now, less whatever
+        # the torso takes out on the way.  Recorded because the trial record
+        # reports the release height: without it the direct carry wrote its
+        # placement reason from a release height of zero, which read as
+        # "released at z=0.000 m, -0.740 m above the bin floor".
+        self.plan_poses['release_z'] = tz - (lower if torso is not None else 0.0)
         return (aim[0], aim[1], torso)
 
     def _carry_base(self, bin_point, tx, ty):
@@ -1037,18 +1045,32 @@ class MissionNode(Node):
         if not (arena.BIN_X[0] + self.CARRY_BIN_MARGIN <= grip_x
                 <= arena.BIN_X[1] - self.CARRY_BIN_MARGIN):
             return None
-        return (base_x, bin_point[1] + ty)
+        # Bound the aim sideways too.  x was bounded and y was not, and y is
+        # the tight axis: the bin is only 0.155 m either side of its middle,
+        # while perception's own clip allows a measurement 0.095 m off it and
+        # the carry is allowed to arrive 0.06 m across its heading with
+        # 0.04 rad of residual yaw - another 0.022 m at a gripper 0.555 m
+        # ahead of the base.  Unbounded, that sums past the rim.
+        aim_y = min(max(bin_point[1], arena.BIN_Y[0] + self.CARRY_BIN_MARGIN_Y),
+                    arena.BIN_Y[1] - self.CARRY_BIN_MARGIN_Y)
+        return (base_x, aim_y + ty)
 
     #: Closest the base centre may come to the table's near edge (world
     #: x = -0.60) on the direct carry.
     CARRY_TABLE_CLEARANCE = 0.22
     #: How far inside the bin's walls the gripper has to end up to drop into it.
     CARRY_BIN_MARGIN = 0.08
+    #: The same, across the bin, where the budget is tighter: the arrival
+    #: tolerance and residual yaw together spend about 0.08 m at the gripper.
+    CARRY_BIN_MARGIN_Y = 0.09
     #: How far short of the bin's middle the gripper is aimed, towards the
-    #: robot.  The bin's mouth is 0.56 m long, so stopping here still drops the
-    #: book well inside it - and it takes 0.15 m off a drive whose last
-    #: centimetres are the slowest, on a grip that lets go after 6-11 s.
-    CARRY_NEAR_OFFSET = 0.15
+    #: robot.  Shortening the drive helps, but only so far: the book hangs
+    #: about 0.05 m BEHIND the pinch, so at 0.15 m its centre sat barely
+    #: 0.08 m inside the near wall, and with the arrival tolerance on top the
+    #: first run to carry the book the whole way released it onto the rim -
+    #: "the gripper opened over the bin but nothing ever contacted it".
+    #: 0.05 m keeps most of the saving and puts the book back over the middle.
+    CARRY_NEAR_OFFSET = 0.05
     #: Most the torso may drop on the way.  It runs at 0.035 m/s, so 0.15 m is
     #: 4.3 s - comfortably inside the drive, which the release waits for.
     CARRY_MAX_TORSO_DROP = 0.15
@@ -1080,21 +1102,19 @@ class MissionNode(Node):
             self.set_mode('idle')
             return self.fail('the book was dropped on the way to the bin')
 
+        # A bin fix that arrives mid-drive is recorded, not acted on.  Two
+        # reasons, both measured: perception cannot deproject at all while the
+        # base is moving (the transform is only taken once the base has been
+        # still for 2.5 s), so this never fires; and re-issuing the goal would
+        # reset the navigation ramp to standstill, commanding 0.004 m/s while
+        # the base is doing 0.45 - a 9 m/s^2 deceleration spike, which is the
+        # one thing that certainly throws the book out of the pads.
         fresh, self._carry_seen = self._carry_seen, None
-        if fresh is not None and self._carry_reaims < 2:
-            aim = self._carry_base(fresh, *self.carry_offset)
-            if aim is not None:
-                shift = math.hypot(aim[0] - self.carry_goal[0],
-                                   aim[1] - self.carry_goal[1])
-                if shift > 0.04:
-                    self._carry_reaims += 1
-                    self.carry_goal = (aim[0], aim[1], self.carry_goal[2])
-                    self.get_logger().info(
-                        're-measured the bin on the move: release pose moved '
-                        '{:.3f} m to ({:+.3f}, {:+.3f})'.format(
-                            shift, aim[0], aim[1]))
-                    self.goto(aim[0], aim[1], math.pi, smooth=True)
-                    return None
+        if fresh is not None:
+            self.get_logger().info(
+                'bin re-measured on the move at ({:+.3f}, {:+.3f}); keeping '
+                'the release pose rather than restarting the ramp'.format(
+                    fresh[0], fresh[1]))
 
         arrived = self.nav_gate('ARRIVED', 'carrying the book to the bin')
         if arrived != 'ARRIVED':
@@ -1228,8 +1248,14 @@ class MissionNode(Node):
         set down rather than let go from above.
         """
         release_height = float(self.plan_poses.get('release_z', 0.0) or 0.0)
+        if not release_height:
+            # Say so rather than formatting a height of zero into the record,
+            # which came out as a book released below the floor of the bin.
+            return ('drop',
+                    'the release height was not recorded, so the placement '
+                    'cannot be shown to have been a gentle one')
         drop = release_height - arena.BIN_FLOOR_Z
-        if release_height and drop <= arena.BOOK_SPINE_H / 2.0 + 0.05:
+        if drop <= arena.BOOK_SPINE_H / 2.0 + 0.05:
             return ('gentle',
                     'released at z={:.3f} m with the book lowered to within '
                     '{:.3f} m of the bin floor'.format(release_height, drop))

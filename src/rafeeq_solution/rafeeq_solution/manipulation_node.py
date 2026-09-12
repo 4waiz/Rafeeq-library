@@ -740,6 +740,15 @@ class ManipulationNode(Node):
     #: squeeze stays at 0.010, and the carry is made short enough to finish
     #: inside the time the grip lasts (see the mission's CARRY_TO_BIN).
     CLOSE_SQUEEZE = 0.010
+    #: Pad gap the close will not leave slacker than, whatever the search
+    #: reports as first contact.  The squeeze is measured from that report,
+    #: and the report lands on a 0.004-unit grid, so the realised grip swung a
+    #: whole increment between runs: five takes closed to 0.0199 m (10.1 mm of
+    #: interference on a 0.030 m spine) and one closed to 0.0230 m (7.0 mm) -
+    #: and that loose one gave the shortest carry of the six.  This only ever
+    #: tightens a slack close to the value most runs already achieve; it never
+    #: squeezes harder than that, which would load the fingertip hinges.
+    CLOSE_TARGET_GAP = 0.0199
 
     def both_pads_on_same_book(self, window=0.8):
         """The book both fingertips are currently touching, or None."""
@@ -785,8 +794,10 @@ class ManipulationNode(Node):
             touched = self.gripped_book(window=0.8)
             if touched is not None and 'squeeze_from' not in state:
                 state['squeeze_from'] = state['target']
-                state['target'] = max(arena.GRIPPER_CLOSE,
-                                      state['target'] - self.CLOSE_SQUEEZE)
+                state['target'] = max(
+                    arena.GRIPPER_CLOSE,
+                    min(state['target'] - self.CLOSE_SQUEEZE,
+                        arena.joint_for_pad_gap(self.CLOSE_TARGET_GAP)))
                 state['t'] = now
                 self.send_gripper(state['target'])
                 return False
