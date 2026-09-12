@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/rafeeq_logo.png" alt="Rafeeq — Library Robot" width="300"/>
+<img src="docs/assets/rafeeq_logo.jpeg" alt="Rafeeq — Library Robot" width="300"/>
 
 **Autonomous book retrieval on TIAGo Pro**
 Emirates Robotics Competition 2026 · Phase 1 · **Team Kanban**, Al Ain University
