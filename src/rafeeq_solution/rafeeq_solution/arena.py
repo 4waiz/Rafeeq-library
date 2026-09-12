@@ -308,3 +308,12 @@ def point_in_bin(x, y, z, margin=0.0):
     return (BIN_X[0] - margin <= x <= BIN_X[1] + margin
             and BIN_Y[0] - margin <= y <= BIN_Y[1] + margin
             and BIN_Z[0] - margin <= z <= BIN_Z[1] + margin)
+
+
+def ramp(current, target, max_step):
+    """Move ``current`` towards ``target`` by at most ``max_step``."""
+    if target > current + max_step:
+        return current + max_step
+    if target < current - max_step:
+        return current - max_step
+    return target

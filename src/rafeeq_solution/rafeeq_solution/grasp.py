@@ -181,7 +181,13 @@ class GraspPlanner(object):
     #: the shelf before the fingers could close.  The pads do not have to be
     #: *entirely* on the book, though - so backing off to -0.06 puts the body
     #: 0.026 m clear while still leaving 0.037 m of pad on the spine.
-    GRASP_DEPTH = -0.06
+    #: -0.06 gripped only the front 0.026 m of a 0.16 m-deep book, 0.05-0.08 m
+    #: ahead of its centre of mass, so a light grip let the book pitch in the
+    #: pads, drop its rear onto the board and get dragged out on the retreat.
+    #: 0.015 m deeper halves nothing but shortens that lever and widens the
+    #: contact; the gripper body behind the pads still clears the spine face by
+    #: about 0.017 m, against a measured depth error now under 0.007 m.
+    GRASP_DEPTH = -0.045
     #: Measured vertical clearance between the top of a book and the board
     #: above it.  Not ``ROW_SPACING - BOOK_SPINE_H``: the boards are 0.030 m
     #: thick, which takes the real gap down to 0.050 m.
@@ -191,8 +197,11 @@ class GraspPlanner(object):
     LIFT = 0.020
     #: How far back the gripper tries to pull the book out of the shelf.
     #: A book's back face starts at 2.980 and the shelf front plane is at
-    #: 2.755, so 0.225 m is needed to clear the shelf completely.
-    EXTRACT = 0.42
+    #: 2.755, so 0.225 m is needed to clear the shelf completely.  0.28 leaves
+    #: 0.055 m of clearance.  It used to be 0.42, and at the gentle retreat
+    #: speed that extra 0.14 m cost about 2.5 s - out of a grip that, measured,
+    #: only keeps the book 12-14 s once it hangs free.
+    EXTRACT = 0.28
     #: Approach tilts tried, in degrees about the finger axis - the single
     #: most important number in this file.
     #:
@@ -814,6 +823,32 @@ class GraspPlanner(object):
 
     # -- the plan --------------------------------------------------------
 
+    def _solve_lift(self, q_grasp, grasp_world, base_xy, base_yaw, approach,
+                    sign):
+        """Posture that raises the grasp straight up, or ``(None, 0.0)``.
+
+        Solved continuously from the grasp posture, with the torso held where
+        the grasp put it and the whole arm checked against the shelf, because
+        this is the one arm motion made with the gripper inside a row.
+        """
+        saved = self.lock_torso(q_grasp[0])
+        self._shelf_check = True
+        self._base_xy, self._base_yaw = base_xy, base_yaw
+        try:
+            lift = min(self.LIFT, 0.4 * self.ROW_CLEARANCE)
+            gx, gy, gz = grasp_world
+            q_lift = self._solve_fixed_sign(
+                (gx, gy, gz + lift), base_xy, base_yaw, approach,
+                sign, q_grasp, name='lift')[0]
+        except PlanFailure:
+            # A lift is preferable but not essential: with mu = 5.0 between
+            # the pads and the spine the book comes out on friction alone.
+            q_lift, lift = None, 0.0
+        finally:
+            self.unlock_torso(saved)
+            self._shelf_check = False
+        return q_lift, lift
+
     def plan_grasp(self, target_world, base_xy, base_yaw=0.0, slot=None):
         """Plan a grasp at a *measured* book position.
 
@@ -854,57 +889,102 @@ class GraspPlanner(object):
         errors = []
         best = None
 
-        # Search wrist roll x spine height x approach tilt together.  Tilt
-        # matters because the gripper body lies along the grasp frame's local
-        # x, which is vertical when the approach is horizontal - and a 0.30 m
-        # shelf row has no vertical room to spare once the 0.174 m gripper is
-        # in it.  Tilting the approach lays part of the wrist back out of the
-        # row: measured, it takes the worst intrusion from 0.144 m to 0.071 m.
+        # Hang the book from ABOVE its centre of mass whenever the geometry
+        # allows it.  The pads can only reach the front 0.06 m of a 0.16 m-deep
+        # book, so the pinch is always well forward of the centre of mass, and
+        # a two-pad pinch has almost no stiffness about its own axis: once the
+        # book's rear leaves the board it swings until its centre of mass hangs
+        # under the pinch.  Pinched 0.054 m BELOW centre (the first clean
+        # candidate, and what the planner used to take) that is an inverted
+        # pendulum - measured in truth, the book came 0.17 m out of the shelf
+        # still held, then flipped over the pads and fell to the floor.
+        # Pinched above centre it swings through about 40 degrees instead of
+        # 130, with a quarter of the energy, and stays in the jaw.  Those
+        # grasps need the opposite wrist roll and a different tilt, so they are
+        # searched across every tilt before any below-centre grasp is tried,
+        # and only accepted if the lift that unloads the book also solves.
+        #
+        # Those are searched height first, highest first, and for each height
+        # the tilts that lay the body back out of the shelf *for that roll*
+        # first: with the -y roll that is -90/-70, and trying +90/+70 first
+        # (which only suit +y) cost 30 s of failed IK per plan, measured.
+        #
+        # Highest first because the higher the pinch sits above the centre of
+        # mass, the smaller the swing when the book's rear leaves the board,
+        # and each swing lets the book slip in the pads.  Lowest-first was
+        # tried for the extra slide margin: at +0.054 m the book swung twice as
+        # far (pitch 1.52 -> 0.45 rad against 1.52 -> 1.06 at +0.072 m) and
+        # slipped out during the retreat itself.  The slow creep on the carry
+        # is dealt with by rolling the book flat (``roll_book``) instead.
+        above = sorted((c for c in candidates if c[1] > 0.0),
+                       key=lambda c: -c[1])
+        below = [c for c in candidates if c[1] <= 0.0]
+        attempts = []
+        for sign, offset in above:
+            for tilt_deg in sorted(self.APPROACH_TILTS,
+                                   key=lambda t, s=sign: 0 if t * s > 0 else 1):
+                attempts.append((tilt_deg, sign, offset, True))
+
+        # Below centre: search wrist roll x spine height x approach tilt
+        # together.  Tilt matters because the gripper body lies along the
+        # grasp frame's local x, which is vertical when the approach is
+        # horizontal - and a 0.30 m shelf row has no vertical room to spare
+        # once the 0.174 m gripper is in it.  Tilting the approach lays part of
+        # the wrist back out of the row: measured, it takes the worst intrusion
+        # from 0.144 m to 0.071 m.
         for tilt_deg in self.APPROACH_TILTS:
+            for sign, offset in below:
+                attempts.append((tilt_deg, sign, offset, False))
+
+        for tilt_deg, sign, offset, need_lift in attempts:
             tilt = math.radians(tilt_deg)
             direction = np.array([math.cos(tilt), 0.0, math.sin(tilt)])
-            for sign, offset in candidates:
-                grasp_z = tz + offset
-                # Pin the torso so the shoulder is level with the row before
-                # solving, then let the 7 arm joints do the rest.  This also
-                # keeps the torso a single slow move at the start of the grasp
-                # instead of something the arm trajectory has to carry.
-                saved = self.lock_torso(self.torso_for(grasp_z))
-                try:
-                    q, info = self.solve_clear(
-                        (grasp_x, ty, grasp_z), base_xy, base_yaw, direction,
-                        sign, name='grasp', max_seeds=12)
-                except PlanFailure as exc:
-                    errors.append('tilt {:+d} deg, {}y offset {:+.3f}: '
-                                  '{}'.format(tilt_deg,
-                                              '+' if sign > 0 else '-',
-                                              offset, exc))
+            grasp_z = tz + offset
+            # Pin the torso so the shoulder is level with the row before
+            # solving, then let the 7 arm joints do the rest.  This also keeps
+            # the torso a single slow move at the start of the grasp instead
+            # of something the arm trajectory has to carry.
+            saved = self.lock_torso(self.torso_for(grasp_z))
+            try:
+                q, info = self.solve_clear(
+                    (grasp_x, ty, grasp_z), base_xy, base_yaw, direction,
+                    sign, name='grasp', max_seeds=12)
+            except PlanFailure as exc:
+                errors.append('tilt {:+d} deg, {}y offset {:+.3f}: '
+                              '{}'.format(tilt_deg, '+' if sign > 0 else '-',
+                                          offset, exc))
+                continue
+            finally:
+                self.unlock_torso(saved)
+
+            info['height_offset'] = offset
+            info['approach_tilt_deg'] = tilt_deg
+
+            # The shelf is not the only thing in the way: the book itself is,
+            # and the arm has to pass it to reach it.  Ranking on shelf
+            # penetration alone always chose the first tilt tried, which
+            # scored a clean zero against the shelf and then took the wrist
+            # past the book with 0.065 m to spare - less than the link's own
+            # radius.  Measured on the same book, tilt +70 with the opposite
+            # roll clears it by 0.179 m for the same clean zero.
+            book = self.book_offender(
+                q, base_xy, base_yaw, (tx, ty, tz), self.PREGRASP_BACKOFF)
+            book_depth = 0.0 if book is None else book[1]
+            info['book_penetration'] = book_depth
+            info['book_link'] = None if book is None else book[0]
+
+            depth = max(info.get('shelf_penetration', 0.0), book_depth)
+            if need_lift and depth <= self.ACCEPT_PENETRATION:
+                if self._solve_lift(q, (grasp_x, ty, grasp_z), base_xy,
+                                    base_yaw, direction, sign)[0] is None:
+                    errors.append('tilt {:+d} deg, {}y offset {:+.3f}: no '
+                                  'lift'.format(tilt_deg,
+                                                '+' if sign > 0 else '-',
+                                                offset))
                     continue
-                finally:
-                    self.unlock_torso(saved)
-
-                info['height_offset'] = offset
-                info['approach_tilt_deg'] = tilt_deg
-
-                # The shelf is not the only thing in the way: the book itself
-                # is, and the arm has to pass it to reach it.  Ranking on shelf
-                # penetration alone always chose the first tilt tried, which
-                # scored a clean zero against the shelf and then took the wrist
-                # past the book with 0.065 m to spare - less than the link's
-                # own radius.  Measured on the same book, tilt +70 with the
-                # opposite roll clears it by 0.179 m for the same clean zero.
-                book = self.book_offender(
-                    q, base_xy, base_yaw, (tx, ty, tz), self.PREGRASP_BACKOFF)
-                book_depth = 0.0 if book is None else book[1]
-                info['book_penetration'] = book_depth
-                info['book_link'] = None if book is None else book[0]
-
-                depth = max(info.get('shelf_penetration', 0.0), book_depth)
-                if best is None or depth < best[2]:
-                    best = (q, info, depth)
-                if depth <= self.ACCEPT_PENETRATION:
-                    break
-            if best is not None and best[2] <= self.ACCEPT_PENETRATION:
+            if best is None or depth < best[2]:
+                best = (q, info, depth)
+            if depth <= self.ACCEPT_PENETRATION:
                 break
 
         if best is None:
@@ -920,21 +1000,8 @@ class GraspPlanner(object):
 
         # The lift is a small arm motion at the same base pose - the only arm
         # motion that happens with the gripper inside the shelf.
-        saved = self.lock_torso(q_grasp[0])
-        self._shelf_check = True
-        self._base_xy, self._base_yaw = base_xy, base_yaw
-        try:
-            lift = min(self.LIFT, 0.4 * self.ROW_CLEARANCE)
-            q_lift = self._solve_fixed_sign(
-                (grasp_x, ty, grasp_z + lift), base_xy, base_yaw, approach,
-                sign, q_grasp, name='lift')[0]
-        except PlanFailure:
-            # A lift is preferable but not essential: with mu = 5.0 between
-            # the pads and the spine the book comes out on friction alone.
-            q_lift, lift = None, 0.0
-        finally:
-            self.unlock_torso(saved)
-            self._shelf_check = False
+        q_lift, lift = self._solve_lift(
+            q_grasp, (grasp_x, ty, grasp_z), base_xy, base_yaw, approach, sign)
 
         offender = self.shelf_offender(
             q_grasp, base_xy, base_yaw, self._row, self._column_y)

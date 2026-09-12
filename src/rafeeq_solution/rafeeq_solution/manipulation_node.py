@@ -111,8 +111,12 @@ class ManipulationNode(Node):
         # Fraction of each joint's URDF velocity limit that trajectories are
         # timed against.  Below 1.0 so the controller is never chasing a
         # physically impossible profile.
-        self.declare_parameter('speed_fraction', 0.55)
-        self.declare_parameter('min_segment_time', 1.0)
+        # Arm and torso motions run at this fraction of the URDF velocity
+        # limits.  Raised from 0.55: none of these moves carries the book
+        # except the lift, which is 0.02 m and floored by min_segment_time
+        # anyway, and the run is judged on a clock.
+        self.declare_parameter('speed_fraction', 0.80)
+        self.declare_parameter('min_segment_time', 0.7)
         # How long a joint is allowed to keep converging after its trajectory
         # action reports success, before being called blocked.
         self.declare_parameter('settle_window', 4.0)
@@ -712,10 +716,30 @@ class ManipulationNode(Node):
     CLOSE_INCREMENT = 0.004
     #: How long to let each increment settle before judging contact.
     CLOSE_DWELL = 0.6
-    #: How much further to close once a pad has reached the book.  Enough to
-    #: load the friction surfaces, far short of the 0.014 m of interference
-    #: that squeezed the book out of the jaw entirely.
-    CLOSE_SQUEEZE = 0.004
+    #: How much further to close once a pad has reached the book.  With the
+    #: camera frame fixed the book is centred in the jaw - the first pad meets
+    #: it at a 0.0307 m gap on a 0.030 m spine, both pads together - so a real
+    #: squeeze loads both faces symmetrically.  The earlier "squeezing harder
+    #: ejects the book" result came from off-centre grips, where one pad
+    #: pushed the book sideways instead.  At 0.004 (0.003 m of interference)
+    #: the book held through the lift and slipped out during the retreat.
+    #: At 0.010 it held through the extraction but crept down through the pads
+    #: while it was carried - measured in truth, about a millimetre a second,
+    #: until the top edge passed the pads 20 s into the drive back - and 0.016
+    #: slipped *more*, not less.
+    #:
+    #: That is the fingertip hinges.  The pads sit on mimic joints that
+    #: gz_ros2_control drives with a velocity servo, and the simulator caps
+    #: that servo at the joint's URDF effort limit: 0.1 N m.  A harder squeeze
+    #: presses the pads harder, the reaction torque on each hinge grows with
+    #: it, and once the servo saturates the book's weight back-drives the
+    #: fingertip and the book slides.  Friction needs very little force here -
+    #: with mu = 5, about 0.3 N per pad carries the 0.3 kg book - which argued
+    #: for a lighter squeeze.  Measured, it does not help: at 0.004 the book
+    #: crept at the same rate and fell 5 s into the carry instead of 10.  The
+    #: squeeze stays at 0.010, and the carry is made short enough to finish
+    #: inside the time the grip lasts (see the mission's CARRY_TO_BIN).
+    CLOSE_SQUEEZE = 0.010
 
     def both_pads_on_same_book(self, window=0.8):
         """The book both fingertips are currently touching, or None."""
@@ -1092,9 +1116,31 @@ class ManipulationNode(Node):
             planner.unlock_torso(saved)
 
         plan.arm_q = np.concatenate([[plan.arm_q[0]], q[1:]])
+        plan.grasp_world = tuple(target)
         self.job_detail['refine_step'] = '{:.3f}'.format(
             info.get('joint_step', 0.0))
-        return [self.arm_step('arm->refined grasp', [q[1:]], timeout=30.0)]
+
+        # The lift was solved from the *planned* posture.  Replaying it after a
+        # refine would carry the arm back to the uncorrected position with the
+        # book already in the jaw, so re-solve it from the refined one.
+        if plan.lift_q is not None:
+            saved = planner.lock_torso(plan.arm_q[0])
+            try:
+                lift_target = (target[0], target[1], target[2] + plan.lift)
+                q_lift = planner._solve_fixed_sign(
+                    lift_target, (here[0], here[1]), here[2], approach,
+                    plan.finger_sign, plan.arm_q, name='lift refine')[0]
+                plan.lift_q = np.concatenate([[plan.arm_q[0]], q_lift[1:]])
+            except grasp.PlanFailure:
+                plan.lift_q = None
+            finally:
+                planner.unlock_torso(saved)
+
+        # Held to the grasp-posture tolerance, not the 0.10 rad default: that
+        # default is worth about 0.015 m at the gripper, which is the whole of
+        # the lateral error this step exists to remove.
+        return [self.arm_step('arm->refined grasp', [q[1:]], timeout=30.0,
+                              tolerance=GRASP_POSTURE_TOLERANCE)]
 
     def build_close_grasp(self, args):
         """Close on the book and prove something book-shaped is held."""
@@ -1175,10 +1221,30 @@ class ManipulationNode(Node):
                         book, self.holding))
             self.holding = book
             self.holding_width = arena.pad_gap(self.finger_position() or 0.0)
+            # Where the gripper is, relative to the base, with the book in it.
+            # The mission uses this to drive the held book straight over the
+            # bin without moving the arm.
+            try:
+                tool = self.chain.fk(self._current_full())[:3, 3]
+                # x and y stay in the base frame - the mission uses them as an
+                # offset from the base - but z is reported in the world, which
+                # is where the mission's rim thresholds live.  The IK chain is
+                # rooted at base_link, which stands arena.BASE_LINK_Z above the
+                # ground, and leaving that out put every height 0.076 m low.
+                state['tool'] = '{:.3f},{:.3f},{:.3f}'.format(
+                    tool[0], tool[1], tool[2] + arena.BASE_LINK_Z)
+                state['torso'] = '{:.3f}'.format(float(
+                    self.joint_positions.get('torso_lift_joint', 0.0)))
+            except Exception:
+                state.pop('tool', None)
             return True
 
         def detail():
-            return {'held': self.holding or '?'}
+            out = {'held': self.holding or '?'}
+            for key in ('tool', 'torso'):
+                if key in state:
+                    out[key] = state[key]
+            return out
 
         return Step(name, start, done, timeout, detail)
 

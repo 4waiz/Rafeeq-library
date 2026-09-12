@@ -309,7 +309,7 @@ def test_navigation_blocked_is_not_arrival():
     node.tick()
     reply(node, ok=True)
     node.tick()
-    assert node.state == 'FACE_SHELF'
+    assert node.state == 'FACE_BIN'
     node.nav_status = 'blocked'
     advance(node, 20.0)
     node.tick()
@@ -533,3 +533,182 @@ def test_a_failed_re_look_does_not_erase_the_evidence_image():
     node.enter_detect_book()                 # re-observe after a failed grasp
     assert node.evidence.get('book_image') == '/tmp/target_book_1.png'
     assert node._record('failed')['evidence']['book_image']
+
+
+def test_the_staging_re_measure_is_not_thrown_away():
+    """REFRESH_BOOK asked perception for a fresh point and then ignored it.
+
+    on_target_point only accepted a book point in DETECT_BOOK, so the staging
+    re-measurement arrived, was dropped, and the state timed out onto the stale
+    point on every run - the re-measure had never once taken effect.
+    """
+    node = make()
+    node.state = 'REFRESH_BOOK'
+    node.on_target_point(_point(2.90, -0.15, 1.58))
+    assert node.book_point == (2.90, -0.15, 1.58)
+    assert node.book_point_best == (2.90, -0.15, 1.58)
+
+
+def test_the_bin_is_found_before_the_shelf():
+    """Measuring the bin first lets the return drive straight to it."""
+    node = make()
+    node.state = 'DETECT_BIN'
+    node.bin_early = True
+    node.entered = node._clock.now()
+    node.bin_point = (-0.975, 0.02, 0.95)
+    node.tick()
+    assert node.state == 'FACE_SHELF'
+    assert node.bin_point == (-0.975, 0.02, 0.95)
+
+
+def test_an_early_bin_search_that_fails_is_not_fatal():
+    """Before the grasp, a missed bin is searched for again later."""
+    node = make()
+    node.state = 'DETECT_BIN'
+    node.bin_early = True
+    node.entered = node._clock.now()
+    for _ in range(6):
+        advance(node, 50.0)
+        node.tick()
+        if node.state != 'DETECT_BIN':
+            break
+    assert node.state == 'FACE_SHELF'
+    assert node.bin_point is None
+
+
+HELD_HIGH = 'held=book_col_2_row_1_red tool=0.600,0.170,1.660 torso=0.350'
+
+
+def test_a_book_held_high_is_carried_straight_to_the_bin():
+    """The grip lasts 10-20 s; the direct drive-and-drop fits inside it."""
+    node = make()
+    node.column_slot = 2
+    node.bin_point = (-0.975, 0.0, 0.95)
+    node.state = 'CONFIRM_HOLD'
+    node.entered = node._clock.now()
+    node.tick()
+    reply(node, ok=True, detail=HELD_HIGH)
+    node.tick()
+    assert node.state == 'CARRY_TO_BIN'
+    x, y, torso = node.carry_goal
+    # Aimed CARRY_NEAR_OFFSET short of the bin's middle, towards the robot,
+    # then clipped to stay inside the bin's near wall.
+    aim = min(-0.975 + node.CARRY_NEAR_OFFSET, -0.695 - node.CARRY_BIN_MARGIN)
+    assert abs(x - (aim + 0.600)) < 1e-9, x
+    assert abs(y - 0.170) < 1e-9
+    drop = min(1.660 - node.CARRY_RELEASE_TOOL_Z, node.CARRY_MAX_TORSO_DROP)
+    assert abs(torso - (0.350 - drop)) < 1e-9, torso
+    assert sent_verbs(node)[-1] == 'torso'
+    assert 'grasp' in node.score.awarded
+
+
+def test_a_book_held_too_low_for_the_rim_takes_the_long_way():
+    node = make()
+    node.column_slot = 2
+    node.bin_point = (-0.975, 0.0, 0.95)
+    node.state = 'CONFIRM_HOLD'
+    node.entered = node._clock.now()
+    node.tick()
+    reply(node, ok=True, detail='held=book tool=0.600,0.170,0.900 torso=0.350')
+    node.tick()
+    assert node.state == 'NAV_BIN_AREA'
+
+
+def test_the_direct_carry_releases_only_once_the_torso_has_stopped():
+    """The manipulation node refuses a second command while busy."""
+    node = make()
+    node.carry_goal = (-0.375, 0.17, 0.14)
+    node.transition('CARRY_TO_BIN')
+    node.hold_width = 0.024
+    node.nav_status = 'reached'
+    node.tick()
+    assert node.state == 'CARRY_TO_BIN'
+    reply(node, ok=True, detail='')
+    node.tick()
+    assert node.state == 'RELEASE'
+
+
+def test_losing_the_book_on_the_direct_carry_fails_the_run():
+    node = make()
+    node.carry_goal = (-0.375, 0.17, None)
+    node.transition('CARRY_TO_BIN')
+    node.hold_width = 0.0
+    advance(node, 5.0)
+    node.tick()
+    assert node.state == 'FAILED'
+    assert 'dropped' in node.failure_reason
+
+
+def test_backing_off_clears_the_table_before_stowing():
+    """After the direct carry the gripper is over the bin; stowing there
+    would swing the arm through it."""
+    node = make()
+    node.carry_goal = (-0.375, 0.17, 0.14)
+    node.transition('BACK_OFF')
+    assert 'stow' not in sent_verbs(node)
+    node.nav_status = 'reached'
+    node.tick()
+    assert sent_verbs(node)[-1] == 'stow'
+    reply(node, ok=True)
+    node.tick()
+    assert node.state == 'DONE'
+
+
+def test_a_stow_failure_after_delivery_does_not_fail_the_run():
+    node = make()
+    node.carry_goal = None
+    node.transition('BACK_OFF')
+    assert sent_verbs(node)[-1] == 'stow'
+    reply(node, ok=False, detail='motion finished off target')
+    node.tick()
+    assert node.state == 'DONE'
+
+
+def test_the_direct_carry_never_drives_the_torso_into_the_table():
+    """A bin measured deep in the table would put the base under its edge;
+    the base stops CARRY_TABLE_CLEARANCE short and the gripper still ends up
+    inside the bin."""
+    node = make()
+    node.bin_point = (-1.155, -0.08, 0.95)
+    x, y, torso = node._direct_carry(HELD_HIGH)
+    assert x >= -0.60 + node.CARRY_TABLE_CLEARANCE - 1e-9
+    assert -1.255 + node.CARRY_BIN_MARGIN <= x - 0.600 <= -0.695 - node.CARRY_BIN_MARGIN
+
+
+def test_a_bin_out_of_reach_from_the_table_edge_takes_the_long_way():
+    node = make()
+    node.bin_point = (-1.155, -0.08, 0.95)
+    short_arm = 'held=book tool=0.200,0.170,1.660 torso=0.350'
+    assert node._direct_carry(short_arm) is None
+
+
+def _carrying(node, bin_point=(-0.975, 0.0, 0.95)):
+    node.bin_point = bin_point
+    node.carry_offset = (0.600, 0.170)
+    aim = node._carry_base(bin_point, 0.600, 0.170)
+    node.carry_goal = (aim[0], aim[1], 0.20)
+    node.transition('CARRY_TO_BIN')
+    node.hold_width = 0.024
+    return node
+
+
+def test_the_bin_is_re_measured_on_the_way_in():
+    """The bin was measured before the shelf trip; about 5 m of driving of
+    odometry drift stands between that and the release, against a bin only
+    0.155 m wide either side."""
+    node = _carrying(make())
+    node.on_target_point(_point(-0.975, 0.12, 0.95))
+    node.tick()
+    assert abs(node.carry_goal[1] - (0.12 + 0.170)) < 1e-9, node.carry_goal
+    assert node._carry_reaims == 1
+    assert node.state == 'CARRY_TO_BIN'
+
+
+def test_a_small_bin_correction_is_not_chased():
+    """Re-publishing the goal restarts the ramp, so only a real shift is
+    worth it."""
+    node = _carrying(make())
+    node.on_target_point(_point(-0.975, 0.01, 0.95))
+    node.tick()
+    assert node.carry_goal[1] == 0.170
+    assert node._carry_reaims == 0

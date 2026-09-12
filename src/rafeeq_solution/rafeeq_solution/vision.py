@@ -358,8 +358,8 @@ def rank_rows(books, row_one_is_top=True):
     return ordered
 
 
-def detect_red_bin(bgr, min_area=2500, min_fill=0.35, max_aspect=4.0):
-    """Find the red collection bin.
+def red_bin_candidates(bgr, min_area=2500, min_fill=0.35, max_aspect=4.0):
+    """Every red blob that is shaped like the collection bin, largest first.
 
     Called only while the robot faces the start zone, so the red books on the
     shelf are behind it.  Three cues separate the bin from the other red things
@@ -370,14 +370,18 @@ def detect_red_bin(bgr, min_area=2500, min_fill=0.35, max_aspect=4.0):
     * **shape**: a spine is a narrow vertical bar, the bin is broad;
     * **solidity**: the bin's face is a filled rectangle.
 
-    Geometry is checked separately by the caller, which deprojects the blob and
-    requires it to be where the bin can actually be.
+    Shape alone cannot settle it, though.  A red book carried in the gripper is
+    seen side-on - its 0.16 x 0.25 m face, aspect 0.64 - and from half a metre
+    it can out-size the bin.  So every qualifying blob is returned, and the
+    caller deprojects each in turn and keeps the first that is where the bin
+    can actually be.  Returning only the largest would let the book we are
+    holding hide the bin for the whole search.
     """
     mask = colour_mask(bgr, 'red')
     contours, _ = cv2.findContours(
         mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    best = None
+    found = []
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         area = cv2.contourArea(contour)
@@ -392,16 +396,22 @@ def detect_red_bin(bgr, min_area=2500, min_fill=0.35, max_aspect=4.0):
         if area / float(w * h) < min_fill:
             continue            # ragged: not a solid box face
 
-        if best is None or area > best['area']:
-            best = {
-                'bbox': (x, y, w, h),
-                'centroid': (x + w / 2.0, y + h / 2.0),
-                'area': float(area),
-                'aspect': float(aspect),
-                'colour': 'bin',
-            }
+        found.append({
+            'bbox': (x, y, w, h),
+            'centroid': (x + w / 2.0, y + h / 2.0),
+            'area': float(area),
+            'aspect': float(aspect),
+            'colour': 'bin',
+        })
 
-    return best
+    found.sort(key=lambda blob: -blob['area'])
+    return found
+
+
+def detect_red_bin(bgr, min_area=2500, min_fill=0.35, max_aspect=4.0):
+    """The largest bin-shaped red blob, or None.  See red_bin_candidates."""
+    found = red_bin_candidates(bgr, min_area, min_fill, max_aspect)
+    return found[0] if found else None
 
 
 def column_box_from_plate(plate, shape, column_width_ratio=1.9,

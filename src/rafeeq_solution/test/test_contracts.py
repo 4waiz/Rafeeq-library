@@ -881,3 +881,223 @@ def test_only_the_grasp_approach_asks_for_millimetre_precision():
     assert asked == {'enter_nav_grasp'}, (
         'precision is requested by {} - it costs convergence time on every '
         'leg that asks for it'.format(sorted(asked) or 'nothing'))
+
+
+def test_the_refine_keeps_its_correction_and_the_lift_follows_it():
+    """Two ways the refine could silently undo itself.
+
+    Its arm step used the 0.10 rad default tolerance - about 0.015 m at the
+    gripper, the whole lateral error it exists to remove - and LIFT replayed a
+    posture solved before the refine, carrying the arm back to the
+    uncorrected position with the book already in the jaw.
+    """
+    path = os.path.join(PKG, 'rafeeq_solution', 'manipulation_node.py')
+    src = open(path, encoding='utf-8').read()
+    body = src.split('def build_refine_grasp')[1].split('def build_close_grasp')[0]
+    assert 'tolerance=GRASP_POSTURE_TOLERANCE' in body, (
+        'refine is back on the default tolerance')
+    assert "name='lift refine'" in body, (
+        'the lift is no longer re-solved from the refined posture')
+
+
+# --------------------------------------------------------------------------
+# Which frame a colour pixel belongs to
+# --------------------------------------------------------------------------
+
+
+def test_colour_pixels_are_deprojected_from_where_they_were_rendered():
+    """The 0.015 m that kept the pads beside the book instead of around it.
+
+    Both head-camera sensors are mounted on head_front_camera_link with no
+    pose, so Gazebo renders colour and depth from the same point, pixel-aligned
+    with identical intrinsics.  The colour image is only *labelled*
+    head_front_camera_color_optical_frame, which TF puts 0.015 m to the side of
+    the link.  Deprojecting in that label shifted every measurement sideways:
+    against ground truth, the target book came back 0.019 m off relative to the
+    robot and the gripper closed 0.0141 m off a spine it clears by 0.0144 m.
+    It hid from the plate check because the plate carried the same offset.
+    """
+    path = os.path.join(PKG, 'rafeeq_solution', 'perception_node.py')
+    src = open(path, encoding='utf-8').read()
+    assert "declare_parameter('deproject_frame'," in src
+    assert "'head_front_camera_depth_optical_frame')" in src, (
+        'the deprojection frame is no longer the render origin')
+    body = src.split('    def world_point')[1].split('    def _do_column')[0]
+    assert 'self.deproject_frame' in body, (
+        'world_point is trusting the colour header frame again')
+
+
+def test_no_disparity_is_applied_between_pixel_aligned_images():
+    """The simulator does not model the RealSense baseline, so shifting the
+    depth lookup by fx * 0.015 / range sampled the wrong pixel - 3.4 px at
+    1.5 m, on a spine that is only about 7 px wide."""
+    path = os.path.join(PKG, 'rafeeq_solution', 'perception_node.py')
+    src = open(path, encoding='utf-8').read()
+    assert "declare_parameter('rgb_depth_baseline', 0.0)" in src
+
+
+def _stub_planner(reachable, lift_ok):
+    """A GraspPlanner whose IK is replaced by a table of what is reachable."""
+    import math
+    import numpy as np
+    from rafeeq_solution import grasp
+    planner = grasp.GraspPlanner(chain=None)
+    planner.check_target = lambda *a, **k: None
+    planner.warm_up = lambda: None
+    planner.grasp_candidates = lambda tz: [(+1.0, -0.054), (+1.0, 0.0),
+                                           (-1.0, 0.072)]
+    planner.lock_torso = lambda value: None
+    planner.unlock_torso = lambda saved: None
+    planner.torso_for = lambda z: 0.35
+
+    def solve_clear(target, base_xy, base_yaw, direction, sign, **kw):
+        tilt = int(round(math.degrees(math.atan2(direction[2], direction[0]))))
+        if (tilt, sign) not in reachable:
+            raise grasp.PlanFailure('unreachable')
+        return np.zeros(8), {'position_error': 0.003, 'finger_sign': sign,
+                             'shelf_penetration': 0.0}
+
+    planner.solve_clear = solve_clear
+    planner.book_offender = lambda *a: None
+    planner.shelf_offender = lambda *a: None
+    planner._solve_lift = lambda q, grasp_world, base_xy, base_yaw, approach, \
+        sign: ((np.zeros(8), 0.02) if lift_ok(sign) else (None, 0.0))
+    return planner
+
+
+def test_the_book_is_hung_from_above_its_centre_of_mass():
+    """Pinched below its centre, the book is an inverted pendulum.
+
+    The pads only reach the front of the book, so once its rear leaves the
+    board it swings about the pinch.  Measured in truth with the pinch 0.054 m
+    below centre: out 0.17 m still held, then flipped over and dropped.  An
+    above-centre grasp at a later tilt must win over a below-centre one at the
+    first tilt tried.
+    """
+    planner = _stub_planner({(90, +1.0), (-70, -1.0)}, lambda sign: True)
+    plan = planner.plan_grasp((2.9, -0.155, 1.578), (2.26, -0.33), 0.0, slot=3)
+    assert plan.height_offset > 0.0, plan.height_offset
+    assert plan.info['approach_tilt_deg'] == -70
+    assert plan.lift_q is not None
+
+
+def test_an_above_centre_grasp_without_a_lift_is_not_taken():
+    """With no lift the rear drags on the board and drops off its edge -
+    exactly the swing the above-centre grasp exists to tame."""
+    planner = _stub_planner({(90, +1.0), (-90, -1.0)}, lambda sign: sign > 0)
+    plan = planner.plan_grasp((2.9, -0.155, 1.578), (2.26, -0.33), 0.0, slot=3)
+    assert plan.height_offset <= 0.0
+    assert plan.info['approach_tilt_deg'] == 90
+
+
+def test_the_book_in_our_gripper_cannot_hide_the_bin():
+    """Seen side-on from half a metre, the red book we are carrying is broad,
+    solid and bigger than the bin.  Picking only the largest blob would lock
+    the bin search onto it for good; every bin-shaped blob must be offered to
+    the geometric check, largest first."""
+    import numpy as np
+    import cv2
+    from rafeeq_solution import vision
+    frame = np.zeros((480, 640, 3), np.uint8)
+    cv2.rectangle(frame, (380, 20), (540, 270), (0, 0, 255), -1)   # held book
+    cv2.rectangle(frame, (100, 300), (300, 400), (0, 0, 255), -1)  # the bin
+    found = vision.red_bin_candidates(frame)
+    assert len(found) == 2, found
+    assert found[0]['area'] > found[1]['area']
+    assert vision.detect_red_bin(frame)['bbox'] == found[0]['bbox']
+
+    path = os.path.join(PKG, 'rafeeq_solution', 'perception_node.py')
+    src = open(path, encoding='utf-8').read()
+    body = src.split('    def _do_bin')[1].split('    def _settled')[0]
+    assert 'red_bin_candidates' in body and 'for blob in candidates' in body, (
+        'the bin search is back to trusting the single largest red blob')
+
+
+def test_a_velocity_ramp_never_steps():
+    from rafeeq_solution.arena import ramp
+    assert ramp(0.0, 0.6, 0.0125) == 0.0125
+    assert ramp(0.3, -0.3, 0.05) == 0.25
+    assert ramp(0.10, 0.11, 0.05) == 0.11
+    speed, steps = 0.0, 0
+    while speed < 0.25:
+        speed = ramp(speed, 0.25, 0.25 * 0.05)
+        steps += 1
+    assert steps == 20          # 1 s to reach 0.25 rad/s at 0.25 rad/s^2
+
+
+def test_the_book_is_carried_gently():
+    """An unramped start to the turn back to the bin threw out a book that
+    had survived the whole extraction.  Both legs driven with the book in the
+    jaw must ask for gentle motion, and the navigation node must honour it."""
+    path = os.path.join(PKG, 'rafeeq_solution', 'mission_node.py')
+    src = open(path, encoding='utf-8').read()
+    for state in ('    def enter_retreat(', '    def enter_nav_bin_area(',
+                  '    def enter_nav_bin('):
+        body = src.split(state)[1].split('\n    def ')[0]
+        assert 'gentle=True' in body, state
+    nav = open(os.path.join(PKG, 'rafeeq_solution', 'navigation_node.py'),
+               encoding='utf-8').read()
+    assert "Bool, '/rafeeq/nav/gentle'" in nav
+    control = nav.split('    def control(')[1].split('\n    def ')[0]
+    assert 'self.goal_gentle' in control and '_ramp_up(' in control
+
+
+def test_the_highest_above_centre_grasp_is_preferred():
+    """The higher the pinch above the centre of mass, the smaller the swing as
+    the book leaves the board.  At +0.054 m it swung twice as far as at
+    +0.072 m and slipped out of the pads during the retreat itself."""
+    planner = _stub_planner({(-90, -1.0)}, lambda sign: True)
+    planner.grasp_candidates = lambda tz: [(-1.0, 0.054), (-1.0, 0.063),
+                                           (-1.0, 0.072)]
+    plan = planner.plan_grasp((2.9, -0.155, 1.578), (2.26, -0.33), 0.0, slot=3)
+    assert plan.height_offset == 0.072, plan.height_offset
+
+
+def test_the_bin_placement_steps_back_from_the_far_side_it_sees():
+    """Measured: from the start zone the bin blob's depth lands on the far
+    side of the interior (x = -1.201 against a middle of -0.975), so the
+    middle is half an extent back along +x.  Subtracting it drove the target
+    into the far clip and the robot's torso towards the table."""
+    path = os.path.join(PKG, 'rafeeq_solution', 'perception_node.py')
+    src = open(path, encoding='utf-8').read()
+    body = src.split('    def _do_bin')[1].split('    def _settled')[0]
+    assert 'world[0] + (arena.BIN_X[1] - arena.BIN_X[0]) / 2.0' in body
+
+
+def test_the_carry_to_the_bin_is_quick_but_ramped():
+    nav = open(os.path.join(PKG, 'rafeeq_solution', 'navigation_node.py'),
+               encoding='utf-8').read()
+    assert "Bool, '/rafeeq/nav/smooth'" in nav
+    control = nav.split('    def control(')[1].split('\n    def ')[0]
+    assert 'self.goal_smooth' in control
+    mission = open(os.path.join(PKG, 'rafeeq_solution', 'mission_node.py'),
+                   encoding='utf-8').read()
+    body = mission.split('    def enter_carry_to_bin(')[1].split('\n    def ')[0]
+    assert 'smooth=True' in body
+
+
+def test_the_gripper_height_is_reported_in_the_world():
+    """The IK chain is rooted at base_link, which stands 0.0762 m above the
+    ground, but the mission's rim thresholds are world heights.  Reporting the
+    raw chain z put every one of them 0.076 m low."""
+    path = os.path.join(PKG, 'rafeeq_solution', 'manipulation_node.py')
+    src = open(path, encoding='utf-8').read()
+    body = src.split('    def _verify_retention_step')[1].split(
+        '    def build_check_hold')[0]
+    assert 'arena.BASE_LINK_Z' in body
+
+
+def test_the_carry_ramp_works_in_the_odom_frame():
+    """Ramping vx and vy in the body frame while the base turns 180 degrees
+    makes the command chase its own rotation - simulated, 0.29-0.71 m off the
+    straight line and up to 2.7 s slower."""
+    nav = open(os.path.join(PKG, 'rafeeq_solution', 'navigation_node.py'),
+               encoding='utf-8').read()
+    control = nav.split('    def control(')[1].split('\n    def ')[0]
+    ramp = control.split('if self.goal_gentle or self.goal_smooth:')[1]
+    assert 'math.cos(yaw)' in ramp, 'the ramp is back in the body frame'
+    assert '_ramp_up(' in ramp
+    assert 'math.hypot(ox, oy)' in ramp, 'speed is capped per axis again'
+    # Growth is rate-limited; decay is not, or the base cannot stop in time
+    # from the carry's top speed and coasts into the table.
+    assert 'def _ramp_up(' in nav

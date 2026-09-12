@@ -102,6 +102,10 @@ class MissionNode(Node):
         # Asks the navigation node to hold the *next* goal to millimetres.
         self.pub_precise = self.create_publisher(
             Bool, '/rafeeq/nav/precise', 10)
+        self.pub_gentle = self.create_publisher(
+            Bool, '/rafeeq/nav/gentle', 10)
+        self.pub_smooth = self.create_publisher(
+            Bool, '/rafeeq/nav/smooth', 10)
         self.pub_cancel = self.create_publisher(
             Empty, '/rafeeq/nav/cancel', 10)
         self.pub_mode = self.create_publisher(
@@ -279,11 +283,20 @@ class MissionNode(Node):
         point = (msg.point.x, msg.point.y, msg.point.z)
         if self.state in ('DETECT_COLUMN',):
             self.column_point = point
-        elif self.state in ('DETECT_BOOK',):
+        elif self.state in ('DETECT_BOOK', 'REFRESH_BOOK'):
+            # REFRESH_BOOK was missing from this list, so the staging-pose
+            # re-measurement was published, arrived here, and was dropped on
+            # the floor.  The state then timed out and fell back to the stale
+            # point every time - the re-measure had never once taken effect.
             self.book_point = point
             self.book_point_best = point
         elif self.state in ('DETECT_BIN',):
             self.bin_point = point
+        elif self.state == 'CARRY_TO_BIN':
+            # Re-measured while driving, to take the odometry drift out of the
+            # release pose.  See check_carry_to_bin.
+            self.bin_point = point
+            self._carry_seen = point
 
     def on_bin_contacts(self, msg):
         if self.delivery.ingest(msg, self.now()):
@@ -301,7 +314,7 @@ class MissionNode(Node):
         # book still counts here as anywhere else.
         manipulating = self.state in (
             'NAV_GRASP', 'CLOSE_GRASP', 'LIFT', 'REFINE', 'RETREAT', 'CARRY',
-            'PLACE', 'RELEASE', 'BACK_OFF')
+            'CARRY_TO_BIN', 'PLACE', 'RELEASE', 'BACK_OFF')
         self.collisions.manipulating = manipulating
         for event in self.collisions.ingest(msg, self.now(), self.state or ''):
             self.get_logger().warn(
@@ -427,7 +440,7 @@ class MissionNode(Node):
                     self.timeouts['manip']))
         return None
 
-    def goto(self, wx, wy, wyaw, precise=False):
+    def goto(self, wx, wy, wyaw, precise=False, gentle=False, smooth=False):
         """Drive to a world pose.
 
         ``precise`` asks the navigation node to hold this one goal to
@@ -436,9 +449,19 @@ class MissionNode(Node):
         0.0265 m and the pads clear the spine by 0.0128 m - and asking for it
         everywhere makes long traverses fight the obstacle checker rather than
         arrive.
+
+        ``gentle`` asks for slow, acceleration-limited motion for this one
+        goal.  It is for the legs driven with the book in the jaw: the pinch
+        holds the book against gravity but has almost no stiffness about its
+        own axis, and an unramped start to a 180 degree turn - 0.6 rad/s from
+        standstill, with the gripper 0.8 m out - jerked a book that had
+        survived the whole extraction out of the pads.
         """
         self.nav_status = 'moving'
         self.pub_precise.publish(Bool(data=bool(precise)))
+        self.pub_gentle.publish(Bool(data=bool(gentle)))
+        # ``smooth``: ordinary speeds, ramped - the quick carry to the bin.
+        self.pub_smooth.publish(Bool(data=bool(smooth)))
         goal = PoseStamped()
         goal.header.frame_id = 'world'
         goal.header.stamp = self.get_clock().now().to_msg()
@@ -506,7 +529,23 @@ class MissionNode(Node):
         self.manip('home')
 
     def check_home(self):
-        return self.manip_gate('FACE_SHELF')
+        return self.manip_gate('FACE_BIN')
+
+    def enter_face_bin(self):
+        """Find the collection bin before going to the shelf, not after.
+
+        The carry home is the one stage the grasp cannot be trusted with for
+        long: the book creeps out of the pads (docs/grasp_blocker.md) and was
+        dropped 5-20 s into every drive back that also stopped to search for
+        the bin on the way.  Measuring the bin now, from the start zone, lets
+        the return drive straight to the release pose.  The bin is still
+        identified visually - only earlier.
+        """
+        self.bin_early = True
+        self.goto(arena.START_XY[0], arena.START_XY[1], math.pi)
+
+    def check_face_bin(self):
+        return self.nav_gate('BIN_POSE', 'turning to face the collection bin')
 
     def enter_face_shelf(self):
         # The robot spawns yawed +90 deg, side-on to the shelf.  Turn to face
@@ -858,17 +897,55 @@ class MissionNode(Node):
         self.manip('lift')
 
     def check_lift(self):
-        return self.manip_gate('RETREAT')
+        result = self.manip_result()
+        if result is not None:
+            ok, detail = result
+            if not ok:
+                return self.fail('the lift failed: {}'.format(detail))
+            if detail:
+                self.get_logger().info('  {}'.format(detail))
+            # The lift ends with its own retention check, so this reply already
+            # carries the gripper's position.  Keeping it lets the drive to the
+            # bin start while the final hold check is still running.
+            self.lift_detail = detail
+            return 'RETREAT'
+        if self.elapsed > self.timeouts['manip']:
+            return self.fail('the lift did not answer')
+        return None
 
     def enter_retreat(self):
+        # Gently, like every leg with the book in the jaw.  The pads grip the
+        # front of the book, so when its rear slides off the board it swings
+        # down to hang under the pinch.  At full speed the rear drops off the
+        # edge and the book rocks +/-0.3 rad in the pads - measured in truth,
+        # enough to shake it out on one run of two.  Pulled slowly, the rear
+        # corner rides down over the board edge instead.
         x, y, yaw = self._pose_from_plan('retreat')
-        self.goto(x, y, yaw)
+        self.goto(x, y, yaw, gentle=True)
 
     def check_retreat(self):
         return self.nav_gate('CONFIRM_HOLD', 'pulling the book off the shelf')
 
     def enter_confirm_hold(self):
+        """Check the hold - and start driving while that check runs.
+
+        The check takes about 1.9 s, and the book is only held for 6-11 s once
+        it hangs free, so standing still for it spends a fifth of the budget.
+        The gripper's position came back with the lift, so the release pose is
+        already known; if the check then fails the run ends anyway, and a
+        second of driving costs nothing.
+        """
         self.manip('check_hold')
+        self._carry_early = False
+        carry = self._direct_carry(getattr(self, 'lift_detail', ''))
+        if carry is not None:
+            self.carry_goal = carry
+            self._carry_early = True
+            self.set_mode('bin')
+            self.goto(carry[0], carry[1], math.pi, smooth=True)
+            self.get_logger().info(
+                'driving to the bin while the hold is checked: base to world '
+                '({:+.3f}, {:+.3f})'.format(carry[0], carry[1]))
 
     def check_confirm_hold(self):
         result = self.manip_result()
@@ -891,15 +968,151 @@ class MissionNode(Node):
                 'BOOK ACQUIRED: {} book from column {} row {} is held and '
                 'clear of the shelf'.format(
                     self.target_colour, self.column_slot, self.book_row))
+            if getattr(self, '_carry_early', False):
+                return 'CARRY_TO_BIN'
+            carry = self._direct_carry(detail)
+            if carry is not None:
+                self.carry_goal = carry
+                return 'CARRY_TO_BIN'
             return 'NAV_BIN_AREA'
         if self.elapsed > self.timeouts['manip']:
             return self.fail('retention check did not answer')
         return None
 
+    #: Lowest the gripper may be, in the world, for the book hanging in it to
+    #: clear the bin's 0.95 m rim on the way in: once it has swung under the
+    #: pinch the book hangs about 0.28 m below the gripper.
+    CARRY_MIN_TOOL_Z = 1.28
+    #: Where the torso brings the gripper down to on the way, so the book is
+    #: let go a short way above the rim rather than from shelf height.
+    CARRY_RELEASE_TOOL_Z = 1.45
+
+    def _direct_carry(self, detail):
+        """``(base_x, base_y, torso or None)`` for a drive-and-drop, or None.
+
+        The pinch only keeps the book for 10-20 s once it hangs free
+        (docs/grasp_blocker.md), and the ordinary return - drive to the start
+        zone, look for the bin, line up on it, plan and execute a placement -
+        takes 25-40 s.  So when the bin was measured before the grasp and the
+        gripper is high enough for the hanging book to clear the rim, the base
+        drives straight to the pose that puts the gripper, exactly as it holds
+        the book now, over the middle of the bin, and the book is released on
+        arrival.  The arm does not move, so nothing swings the book.
+        """
+        if self.bin_point is None:
+            return None
+        fields = dict(item.split('=', 1) for item in (detail or '').split()
+                      if '=' in item)
+        try:
+            tx, ty, tz = (float(v) for v in fields['tool'].split(','))
+        except (KeyError, ValueError):
+            return None
+        if tz < self.CARRY_MIN_TOOL_Z:
+            return None
+        torso = None
+        lower = min(tz - self.CARRY_RELEASE_TOOL_Z, self.CARRY_MAX_TORSO_DROP)
+        if 'torso' in fields and lower > 0.01:
+            torso = max(0.0, float(fields['torso']) - lower)
+        self.carry_offset = (tx, ty)
+        aim = self._carry_base(self.bin_point, tx, ty)
+        if aim is None:
+            return None
+        return (aim[0], aim[1], torso)
+
+    def _carry_base(self, bin_point, tx, ty):
+        """Where the base must stand for the held book to hang over the bin.
+
+        Facing the bin (world yaw pi) the gripper sits at base - (tx, ty).  The
+        base may not go further in than the table allows: the torso and
+        shoulders stand about 0.15 m ahead of the base centre, at table-top
+        height, so the centre stays CARRY_TABLE_CLEARANCE clear of its edge.
+        Returns None when the arm cannot then reach over the bin, which sends
+        the run down the long way, where the reach is planned instead.
+        """
+        aim_x = min(bin_point[0] + self.CARRY_NEAR_OFFSET,
+                    arena.BIN_X[1] - self.CARRY_BIN_MARGIN)
+        base_x = max(aim_x + tx,
+                     arena.TABLE_X[1] + self.CARRY_TABLE_CLEARANCE)
+        grip_x = base_x - tx
+        if not (arena.BIN_X[0] + self.CARRY_BIN_MARGIN <= grip_x
+                <= arena.BIN_X[1] - self.CARRY_BIN_MARGIN):
+            return None
+        return (base_x, bin_point[1] + ty)
+
+    #: Closest the base centre may come to the table's near edge (world
+    #: x = -0.60) on the direct carry.
+    CARRY_TABLE_CLEARANCE = 0.22
+    #: How far inside the bin's walls the gripper has to end up to drop into it.
+    CARRY_BIN_MARGIN = 0.08
+    #: How far short of the bin's middle the gripper is aimed, towards the
+    #: robot.  The bin's mouth is 0.56 m long, so stopping here still drops the
+    #: book well inside it - and it takes 0.15 m off a drive whose last
+    #: centimetres are the slowest, on a grip that lets go after 6-11 s.
+    CARRY_NEAR_OFFSET = 0.15
+    #: Most the torso may drop on the way.  It runs at 0.035 m/s, so 0.15 m is
+    #: 4.3 s - comfortably inside the drive, which the release waits for.
+    CARRY_MAX_TORSO_DROP = 0.15
+
+    def enter_carry_to_bin(self):
+        x, y, torso = self.carry_goal
+        self._carry_torso = torso is not None
+        self._carry_seen = None
+        self._carry_reaims = 0
+        already_driving = getattr(self, '_carry_early', False)
+        if self._carry_torso:
+            self.manip('torso', '{:.3f}'.format(torso))
+        # Keep looking at the bin on the way in.  The bin was measured before
+        # the shelf trip, and about 5 m of driving of odometry drift stands
+        # between that measurement and this drive - more than the 0.155 m the
+        # bin's interior allows either side.  Re-measuring while driving puts
+        # the release pose back in the frame the robot is actually in.
+        self.set_mode('bin')
+        self.get_logger().info(
+            'carrying the book straight to the bin: base to world ({:+.3f}, '
+            '{:+.3f}) facing it{}'.format(
+                x, y, '' if torso is None else
+                ', torso down to {:.3f} m on the way'.format(torso)))
+        if not already_driving:
+            self.goto(x, y, math.pi, smooth=True)
+
+    def check_carry_to_bin(self):
+        if self.hold_width <= 0.0 and self.elapsed > 2.0:
+            self.set_mode('idle')
+            return self.fail('the book was dropped on the way to the bin')
+
+        fresh, self._carry_seen = self._carry_seen, None
+        if fresh is not None and self._carry_reaims < 2:
+            aim = self._carry_base(fresh, *self.carry_offset)
+            if aim is not None:
+                shift = math.hypot(aim[0] - self.carry_goal[0],
+                                   aim[1] - self.carry_goal[1])
+                if shift > 0.04:
+                    self._carry_reaims += 1
+                    self.carry_goal = (aim[0], aim[1], self.carry_goal[2])
+                    self.get_logger().info(
+                        're-measured the bin on the move: release pose moved '
+                        '{:.3f} m to ({:+.3f}, {:+.3f})'.format(
+                            shift, aim[0], aim[1]))
+                    self.goto(aim[0], aim[1], math.pi, smooth=True)
+                    return None
+
+        arrived = self.nav_gate('ARRIVED', 'carrying the book to the bin')
+        if arrived != 'ARRIVED':
+            return arrived
+        self.set_mode('idle')
+        # The manipulation node takes one command at a time and refuses a new
+        # one while busy, so the release waits for the torso to finish.
+        if self._carry_torso and self.manip_result() is None:
+            if self.elapsed > self.timeouts['manip']:
+                return self.fail('the torso did not finish lowering')
+            return None
+        return 'RELEASE'
+
     def enter_nav_bin_area(self):
         # Face the bin from the start zone so the camera is already pointing
-        # at it when the search begins.
-        self.goto(arena.START_XY[0], arena.START_XY[1], math.pi)
+        # at it when the search begins.  Driven gently: the book is in the
+        # jaw.  See goto().
+        self.goto(arena.START_XY[0], arena.START_XY[1], math.pi, gentle=True)
 
     def check_nav_bin_area(self):
         if self.hold_width <= 0.0 and self.elapsed > 5.0:
@@ -918,15 +1131,31 @@ class MissionNode(Node):
         self.set_mode('bin')
 
     def check_detect_bin(self):
+        early = getattr(self, 'bin_early', False)
         if self.bin_point is not None:
             self.get_logger().info(
                 'collection bin identified at world ({:+.3f}, {:+.3f}, '
                 '{:.3f})'.format(*self.bin_point))
+            if early:
+                # Measured from the start zone, before the grasp: now go and
+                # get the book.
+                self.bin_early = False
+                self.attempt = 0
+                return 'FACE_SHELF'
             return 'NAV_BIN'
         if self.elapsed <= self.timeouts['detect']:
             return None
 
         self.attempt += 1
+        if self.attempt > 3 and early:
+            # Not fatal this early: the bin is searched for again, the
+            # ordinary way, once the book is in hand.
+            self.get_logger().warn(
+                'the collection bin was not identified from the start zone; '
+                'it will be searched for again after the grasp')
+            self.bin_early = False
+            self.attempt = 0
+            return 'FACE_SHELF'
         if self.attempt > 3:
             # Deliberately a failure, not a silent fallback to a nominal pose.
             # Replacing a failed visual identification with a hard-coded
@@ -946,7 +1175,7 @@ class MissionNode(Node):
 
     def enter_nav_bin(self):
         self.goto(self.bin_point[0] + self.bin_standoff,
-                  self.bin_point[1], math.pi)
+                  self.bin_point[1], math.pi, gentle=True)
 
     def check_nav_bin(self):
         return self.nav_gate('PLACE', 'lining up on the bin')
@@ -1009,10 +1238,44 @@ class MissionNode(Node):
                     release_height, drop))
 
     def enter_back_off(self):
+        """Clear the table, then fold the arm.
+
+        After the direct carry the gripper is still over the bin, and the
+        stow path would swing the arm down through it, so the base backs away
+        first.  The book is already delivered by now - the bin's own contact
+        sensor said so - so neither step is allowed to turn a completed
+        delivery into a failed run; a problem is logged instead.
+        """
+        self._stowing = False
+        goal = getattr(self, 'carry_goal', None)
+        if goal is not None:
+            self.goto(goal[0] + 0.35, goal[1], math.pi, smooth=True)
+        else:
+            self._start_stow()
+
+    def _start_stow(self):
+        self._stowing = True
+        self.entered = self.get_clock().now()
         self.manip('stow')
 
     def check_back_off(self):
-        return self.manip_gate('DONE')
+        if not self._stowing:
+            if self.nav_status in ('reached', 'failed') or self.elapsed > 20.0:
+                self._start_stow()
+            return None
+        result = self.manip_result()
+        if result is not None:
+            if not result[0]:
+                self.get_logger().warn(
+                    'could not stow the arm after the delivery ({}); the book '
+                    'is already in the bin'.format(result[1]))
+            return 'DONE'
+        if self.elapsed > self.timeouts['manip']:
+            self.get_logger().warn(
+                'the arm did not finish stowing; the book is already in the '
+                'bin')
+            return 'DONE'
+        return None
 
     # -- terminal states -------------------------------------------------
 

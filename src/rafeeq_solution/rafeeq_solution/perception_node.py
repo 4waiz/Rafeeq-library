@@ -106,7 +106,18 @@ class PerceptionNode(Node):
         self.declare_parameter(
             'info_topic',
             '/head_front_camera/head_front_camera/color/camera_info')
-        self.declare_parameter('rgb_depth_baseline', 0.015)
+        # Both head-camera sensors are mounted on head_front_camera_link with
+        # no pose, so Gazebo renders colour and depth from the SAME point and
+        # the two images are pixel-aligned (identical intrinsics too).  There
+        # is no disparity to correct; the 0.015 m this used to be is the
+        # real RealSense's baseline, which the simulator does not model.
+        self.declare_parameter('rgb_depth_baseline', 0.0)
+        # The frame the images are actually rendered from.  The colour image
+        # is only *labelled* head_front_camera_color_optical_frame, which TF
+        # puts 0.015 m to the side of the link; deprojecting in that label
+        # shifted every measurement sideways by 0.015 m.
+        self.declare_parameter('deproject_frame',
+                               'head_front_camera_depth_optical_frame')
         # Above this speed the robot is moving fast enough that using a
         # transform from a different instant would matter.
         self.declare_parameter('stationary_speed', 0.02)
@@ -144,6 +155,7 @@ class PerceptionNode(Node):
         self.tf_timeout = float(self.get_parameter('tf_timeout').value)
         self.max_image_age = float(self.get_parameter('max_image_age').value)
         self.baseline = float(self.get_parameter('rgb_depth_baseline').value)
+        self.deproject_frame = str(self.get_parameter('deproject_frame').value)
         self.stationary_speed = float(
             self.get_parameter('stationary_speed').value)
         self.tf_settle_seconds = float(
@@ -376,11 +388,16 @@ class PerceptionNode(Node):
         Pixel -> camera optical frame -> odom (via TF **at the image's own
         timestamp**) -> world (via the known spawn pose).
 
-        The colour and depth cameras are 15 mm apart on the same rig and the
-        depth image is rendered from the depth frame, so a colour pixel does
-        not index the depth image exactly.  The disparity is
-        ``fx * baseline / range`` - about 3.4 px on a 7 px book spine at
-        1.5 m - so it is corrected rather than ignored.
+        The deprojection is done in ``deproject_frame``, the point the image
+        was actually rendered from, not in the frame the colour image's header
+        names.  In this simulator both sensors sit on head_front_camera_link
+        with no pose, so colour and depth come from one point, pixel-aligned,
+        while the colour header names a frame TF places 0.015 m to the side.
+        Trusting the header put every book 0.015 m sideways - measured against
+        ground truth, the target came back +0.019 m off relative to the robot,
+        and the gripper closed 0.0141 m off a spine it clears by only 0.0144 m.
+        The error was invisible to the plate check because the plate carried
+        exactly the same offset and the difference cancelled it.
         """
         if self.camera is None or self.depth_m is None:
             return None
@@ -403,7 +420,7 @@ class PerceptionNode(Node):
         x, y, z = self.camera.deproject(u, v, depth)
 
         point = PointStamped()
-        point.header.frame_id = header.frame_id
+        point.header.frame_id = self.deproject_frame or header.frame_id
         point.header.stamp = header.stamp
         point.point.x, point.point.y, point.point.z = x, y, z
 
@@ -804,26 +821,36 @@ class PerceptionNode(Node):
     # -- mode: bin -------------------------------------------------------
 
     def _do_bin(self, bgr, header):
-        found = vision.detect_red_bin(bgr)
-        if found is None:
+        candidates = vision.red_bin_candidates(bgr)
+        if not candidates:
             self._status('bin:searching:none')
-            return
-
-        world = self.world_point(*found['centroid'], header=header,
-                                 bbox=found['bbox'])
-        if world is None:
-            self._status('bin:searching:no_depth')
             return
 
         # A red blob at a plausible depth is still not necessarily the bin: a
         # red book on the shelf, or the red book in our own gripper, are both
-        # red.  Require it to be where the bin actually is.
-        if not arena.point_in_bin(world[0], world[1], world[2], margin=0.35):
-            self.get_logger().warn(
-                'rejecting a red blob at ({:+.2f}, {:+.2f}, {:.2f}) - too far '
-                'from where the collection bin can be'.format(*world),
-                throttle_duration_sec=5.0)
-            self._status('bin:searching:not_the_bin')
+        # red.  Require it to be where the bin actually is - and try every
+        # bin-shaped blob, not just the largest, because the book we are
+        # carrying can be the largest red thing in frame.
+        found, world, rejected = None, None, []
+        for blob in candidates:
+            point = self.world_point(*blob['centroid'], header=header,
+                                     bbox=blob['bbox'])
+            if point is None:
+                continue
+            if arena.point_in_bin(point[0], point[1], point[2], margin=0.35):
+                found, world = blob, point
+                break
+            rejected.append(point)
+        if found is None:
+            if rejected:
+                self.get_logger().warn(
+                    'rejecting {} red blob(s), nearest at ({:+.2f}, {:+.2f}, '
+                    '{:.2f}) - too far from where the collection bin can be'
+                    .format(len(rejected), *rejected[0]),
+                    throttle_duration_sec=5.0)
+                self._status('bin:searching:not_the_bin')
+            else:
+                self._status('bin:searching:no_depth')
             return
 
         bucket = int(found['centroid'][0] // 40)
@@ -835,6 +862,15 @@ class PerceptionNode(Node):
         # placement target is the middle of the bin's mouth, derived from the
         # measured position plus the bin's known extent - a red pixel's depth
         # is not by itself a place to let go of a book.
+        #
+        # Which part of the bin that pixel is was measured, not assumed.  From
+        # the start zone the camera looks down into the open bin, and the
+        # blob's depth lands on the FAR side of the interior: observed at
+        # (-1.201, -0.080, 0.752) - floor height, 0.05 m inside the far wall -
+        # against a true middle of x = -0.975.  So the middle is half an
+        # extent back towards the camera, along +x.  (Subtracting it instead,
+        # on the assumption that the near wall is what is seen, drove the
+        # target into the far clip and the robot's torso towards the table.)
         placement = (
             float(np.clip(world[0] + (arena.BIN_X[1] - arena.BIN_X[0]) / 2.0,
                           arena.BIN_X[0] + 0.10, arena.BIN_X[1] - 0.10)),

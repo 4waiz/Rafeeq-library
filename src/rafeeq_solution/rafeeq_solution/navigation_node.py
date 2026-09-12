@@ -102,14 +102,35 @@ class ScanSector(object):
         return best
 
 
+def _ramp_up(current, target, max_step):
+    """Rate-limit a command's growth only, never its decay.
+
+    ``arena.ramp`` limits both directions, which is wrong for the legs carried
+    with a book in the jaw: a ramp that also governs slowing down cannot stop
+    in time from a high speed cap - at 0.08 m/s^2 from 0.45 m/s that is 1.26 m
+    of coasting - while the proportional controller's own approach to a goal is
+    gradual and needs no smoothing.  A reversal still ramps: crossing zero is
+    as much of a jolt to a hanging book as speeding up.
+    """
+    if target * current >= 0.0 and abs(target) <= abs(current):
+        return target
+    return arena.ramp(current, target, max_step)
+
+
 class NavigationNode(Node):
 
     def __init__(self):
         super().__init__('rafeeq_navigation')
 
         self.declare_parameter('spawn_yaw', arena.SPAWN_YAW)
-        self.declare_parameter('max_linear', 0.32)
-        self.declare_parameter('max_angular', 0.6)
+        # Ordinary legs - nothing is held during them, and the run is
+        # judged on a clock.  The grasp approach is capped separately below,
+        # because that one is a millimetre leg.
+        self.declare_parameter('max_linear', 0.50)
+        self.declare_parameter('max_angular', 0.90)
+        #: The precise (grasp-approach) leg keeps the old, slower cap: it
+        #: stops to 0.006 m and arriving fast means overshooting.
+        self.declare_parameter('precise_max_linear', 0.30)
         self.declare_parameter('kp_linear', 1.1)
         self.declare_parameter('kp_angular', 1.6)
         self.declare_parameter('position_tolerance', 0.02)
@@ -136,6 +157,15 @@ class NavigationNode(Node):
         # obstacle checker instead of arriving.
         self.declare_parameter('lateral_tolerance', 0.02)
         self.declare_parameter('yaw_tolerance', 0.02)
+        # What the carry to the bin asks for instead.  It does not need
+        # millimetres: it needs to stop, because the book is only held for so
+        # long.  The bin's mouth is 0.56 x 0.31 m and the release is a drop
+        # into it, so 0.06 m and 0.08 rad (0.048 m of lateral error at the
+        # gripper) is plenty - and it skips the slow proportional creep over
+        # the last 0.1 m, which cost 1-2 s of a carry that was finishing
+        # within a second or two of the book letting go.
+        self.declare_parameter('carry_position_tolerance', 0.06)
+        self.declare_parameter('carry_yaw_tolerance', 0.08)
         self.declare_parameter('approach_slowdown', 0.35)
         self.declare_parameter('obstacle_stop_distance', 0.42)
         self.declare_parameter('obstacle_half_angle_deg', 35.0)
@@ -146,10 +176,45 @@ class NavigationNode(Node):
         # stop rule has to be relaxed once we are close to the goal - but only
         # then, and only that close.
         self.declare_parameter('ignore_obstacles_within', 0.45)
+        # What the legs driven with a book in the jaw ask for instead.  The
+        # pinch holds the book against gravity but has almost no stiffness
+        # about its own axis, and the ordinary controller steps straight to
+        # 0.6 rad/s: at the start of the 180 degree turn back to the bin, with
+        # the gripper 0.8 m out, that is a 0.45 m/s sideways jerk at the pads,
+        # and it threw out a book that had survived the whole extraction.
+        # Speeds are capped and every component is ramped instead.
+        self.declare_parameter('gentle_max_linear', 0.12)
+        self.declare_parameter('gentle_max_angular', 0.25)
+        self.declare_parameter('gentle_linear_accel', 0.15)
+        self.declare_parameter('gentle_angular_accel', 0.25)
+        # The carry to the bin: a high top speed, but the gentlest rates of
+        # change.  Measured live, what shakes a hanging book out of the pads is
+        # acceleration, not speed - and the honest measure is how far the book
+        # survives, not how long:
+        #
+        #     0.30 m/s^2, cap 0.45   dropped after 0.92 m
+        #     0.15 m/s^2, cap 0.12   dropped after 0.95 m
+        #     0.15 m/s^2, cap 0.45   dropped after 1.75 m
+        #
+        # Halving the acceleration nearly doubled the distance, so it is
+        # halved again here; the carry needs 2.3 m.  The ramp only limits
+        # speeding *up* (see control), so slowing down is left to the
+        # proportional controller, which is gradual anyway.
+        self.declare_parameter('smooth_linear_accel', 0.08)
+        self.declare_parameter('smooth_angular_accel', 0.12)
+        # Faster than an ordinary leg: the book is only held for so long.
+        self.declare_parameter('smooth_max_linear', 0.45)
+        #: The carry's own turn rate.  It must NOT track max_angular: raising
+        #: that to 0.90 rad/s for the ordinary legs also sped up the turn made
+        #: with the book hanging from the pads, and the book came out after
+        #: 3.4 s instead of 8.8 s on the run before it.
+        self.declare_parameter('smooth_max_angular', 0.60)
 
         self.spawn_yaw = float(self.get_parameter('spawn_yaw').value)
         self.max_linear = float(self.get_parameter('max_linear').value)
         self.max_angular = float(self.get_parameter('max_angular').value)
+        self.precise_max_linear = float(
+            self.get_parameter('precise_max_linear').value)
         self.kp_linear = float(self.get_parameter('kp_linear').value)
         self.kp_angular = float(self.get_parameter('kp_angular').value)
         self.pos_tol = float(self.get_parameter('position_tolerance').value)
@@ -160,7 +225,26 @@ class NavigationNode(Node):
             self.get_parameter('precise_lateral_tolerance').value)
         #: Set by /rafeeq/nav/precise for the next goal only, then cleared.
         self.precise_next = False
+        self.gentle_max_linear = float(
+            self.get_parameter('gentle_max_linear').value)
+        self.gentle_max_angular = float(
+            self.get_parameter('gentle_max_angular').value)
+        self.gentle_linear_accel = float(
+            self.get_parameter('gentle_linear_accel').value)
+        self.gentle_angular_accel = float(
+            self.get_parameter('gentle_angular_accel').value)
+        self.control_period = float(
+            self.get_parameter('control_period').value)
+        #: Set by /rafeeq/nav/gentle for the next goal only, then cleared.
+        self.gentle_next = False
+        self.goal_gentle = False
+        #: Last command sent, which a gentle goal ramps from.
+        self.last_cmd = (0.0, 0.0, 0.0)
         self.yaw_tol = float(self.get_parameter('yaw_tolerance').value)
+        self.carry_pos_tol = float(
+            self.get_parameter('carry_position_tolerance').value)
+        self.carry_yaw_tol = float(
+            self.get_parameter('carry_yaw_tolerance').value)
         self.slowdown = float(self.get_parameter('approach_slowdown').value)
         self.stop_distance = float(
             self.get_parameter('obstacle_stop_distance').value)
@@ -207,6 +291,26 @@ class NavigationNode(Node):
         self.create_subscription(
             Bool, '/rafeeq/nav/precise',
             lambda m: setattr(self, 'precise_next', bool(m.data)), 10)
+        # Asking for slow, ramped motion on the next goal only - the legs
+        # driven with a book in the jaw.  See `gentle_max_angular`.
+        self.create_subscription(
+            Bool, '/rafeeq/nav/gentle',
+            lambda m: setattr(self, 'gentle_next', bool(m.data)), 10)
+        # Ordinary speeds, ramped, for the next goal only - the carry to the
+        # bin.  See `smooth_linear_accel`.
+        self.smooth_linear_accel = float(
+            self.get_parameter('smooth_linear_accel').value)
+        self.smooth_angular_accel = float(
+            self.get_parameter('smooth_angular_accel').value)
+        self.smooth_max_linear = float(
+            self.get_parameter('smooth_max_linear').value)
+        self.smooth_max_angular = float(
+            self.get_parameter('smooth_max_angular').value)
+        self.smooth_next = False
+        self.goal_smooth = False
+        self.create_subscription(
+            Bool, '/rafeeq/nav/smooth',
+            lambda m: setattr(self, 'smooth_next', bool(m.data)), 10)
         self.create_subscription(
             LaserScan, '/scan_front_raw', self.on_front,
             qos_profile_sensor_data)
@@ -297,6 +401,21 @@ class NavigationNode(Node):
                 'this goal is the grasp approach: holding to {:.3f} m along '
                 'and {:.3f} m across the heading'.format(
                     self.precise_pos_tol, self.precise_lat_tol))
+        self.goal_gentle = self.gentle_next
+        self.gentle_next = False
+        self.goal_smooth = self.smooth_next and not self.goal_gentle
+        self.smooth_next = False
+        if self.goal_smooth:
+            self.get_logger().info(
+                'this goal carries the book to the bin: ordinary speeds, '
+                'ramped at {:.2f} m/s^2 and {:.2f} rad/s^2'.format(
+                    self.smooth_linear_accel, self.smooth_angular_accel))
+        if self.goal_gentle:
+            self.get_logger().info(
+                'this goal carries the book: at most {:.2f} m/s and {:.2f} '
+                'rad/s, ramped at {:.2f} m/s^2 and {:.2f} rad/s^2'.format(
+                    self.gentle_max_linear, self.gentle_max_angular,
+                    self.gentle_linear_accel, self.gentle_angular_accel))
         self.goal_started = self.now()
         self.state = 'moving'
 
@@ -351,9 +470,18 @@ class NavigationNode(Node):
 
         pos_tol = self.precise_pos_tol if self.goal_precise else self.pos_tol
         lat_tol = self.precise_lat_tol if self.goal_precise else self.lat_tol
+        yaw_tol = self.yaw_tol
+        if self.goal_smooth or self.goal_gentle:
+            # Both legs carried with a book in the jaw: the retreat only has to
+            # clear the shelf and the carry only has to reach the bin's mouth.
+            # Converging to 0.02 m spends a second of proportional creep that
+            # the book, which lets go after 6-11 s, cannot spare.
+            pos_tol = max(pos_tol, self.carry_pos_tol)
+            lat_tol = max(lat_tol, self.carry_pos_tol)
+            yaw_tol = max(yaw_tol, self.carry_yaw_tol)
 
         if (abs(along) <= pos_tol and abs(across) <= lat_tol
-                and abs(eyaw) <= self.yaw_tol):
+                and abs(eyaw) <= yaw_tol):
             self.goal = None
             self.state = 'reached'
             self.pub_cmd.publish(Twist())
@@ -384,8 +512,10 @@ class NavigationNode(Node):
         ey = sin_yaw * ex_odom + cos_yaw * ey_odom
 
         scale = min(1.0, self.slowdown + distance)
-        vx = clamp(self.kp_linear * ex, self.max_linear) * scale
-        vy = clamp(self.kp_linear * ey, self.max_linear) * scale
+        cap_linear = (self.precise_max_linear if self.goal_precise
+                      else self.max_linear)
+        vx = clamp(self.kp_linear * ex, cap_linear) * scale
+        vy = clamp(self.kp_linear * ey, cap_linear) * scale
 
         # Line up before going in, not while going in.
         #
@@ -415,14 +545,60 @@ class NavigationNode(Node):
                 vx -= along_speed * along_hat[0]
                 vy -= along_speed * along_hat[1]
 
+        wz = clamp(self.kp_angular * eyaw, self.max_angular)
+
+        # Carrying the book: cap every component and ramp it from the last
+        # command instead of stepping.  Ramped before the obstacle veto, so a
+        # veto still stops the base at once.  Each new goal ramps up from
+        # standstill, which is where the previous goal left the base.
+        #
+        # The carry to the bin (`goal_smooth`) keeps the ordinary top speeds
+        # and only ramps: it has to be quick, because the book only stays in
+        # the pads for so long once it hangs free.
+        if self.goal_gentle or self.goal_smooth:
+            if getattr(self, 'last_cmd_goal', None) is not self.goal:
+                self.last_cmd = (0.0, 0.0, 0.0)
+            if self.goal_gentle:
+                cap_v, cap_w = self.gentle_max_linear, self.gentle_max_angular
+                dv = self.gentle_linear_accel * self.control_period
+                dw = self.gentle_angular_accel * self.control_period
+            else:
+                cap_v, cap_w = self.smooth_max_linear, self.smooth_max_angular
+                dv = self.smooth_linear_accel * self.control_period
+                dw = self.smooth_angular_accel * self.control_period
+            # Ramped in the odom frame, not the body frame.  The carry turns
+            # 180 degrees while it drives, and a body-frame ramp spends the
+            # whole leg chasing its own rotation: simulated over this
+            # controller, that swerved the base 0.29-0.71 m off the straight
+            # line and cost up to 2.7 s - out of a grip that lasts ten.
+            # Capping the magnitude rather than each axis also stops a diagonal
+            # leg running at sqrt(2) times the speed the log claims.
+            c, s = math.cos(yaw), math.sin(yaw)
+            ox, oy = c * vx - s * vy, s * vx + c * vy
+            speed = math.hypot(ox, oy)
+            if speed > cap_v:
+                ox, oy = ox * cap_v / speed, oy * cap_v / speed
+            # Only speeding up is rate-limited.  A ramp that also governs
+            # slowing down cannot stop in time from a high cap - at 0.08 m/s^2
+            # from 0.45 m/s that is 1.26 m of coasting, straight into the
+            # table - and the proportional controller's own approach is
+            # gradual, so there is nothing to smooth on the way down.
+            ox = _ramp_up(self.last_cmd[0], ox, dv)
+            oy = _ramp_up(self.last_cmd[1], oy, dv)
+            wz = _ramp_up(self.last_cmd[2], clamp(wz, cap_w), dw)
+            vx, vy = c * ox + s * oy, -s * ox + c * oy
+
         blocked = self._apply_clearance(vx, vy, distance)
         if blocked is not None:
             vx, vy = blocked
 
         cmd = Twist()
         cmd.linear.x, cmd.linear.y = vx, vy
-        cmd.angular.z = clamp(self.kp_angular * eyaw, self.max_angular)
+        cmd.angular.z = wz
         self.pub_cmd.publish(cmd)
+        cy, sy = math.cos(yaw), math.sin(yaw)
+        self.last_cmd = (cy * vx - sy * vy, sy * vx + cy * vy, wz)
+        self.last_cmd_goal = self.goal
 
     def _apply_clearance(self, vx, vy, distance):
         """Veto motion in any direction that is not clear.
