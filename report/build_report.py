@@ -60,6 +60,26 @@ LINE = {'h1': 0.021, 'h2': 0.016, 'body': 0.0132, 'note': 0.0122,
         'mono': 0.0118, 'bullet': 0.0132}
 WRAP = {'body': 108, 'note': 118, 'bullet': 104, 'mono': 118, 'h1': 60, 'h2': 80}
 
+#: The recorded delivering run.  Every figure here is read off that take's own
+#: logs, which are committed at media/delivered_take_solution.log, so this block
+#: can be checked rather than believed.  It is kept apart from the trial records
+#: in results/ for one reason: the recorder ends the take on the organisers'
+#: /bin_contacts event - the task being finished - which is before the run
+#: writes its own record.  There is therefore no machine-readable record for it,
+#: and it is not counted in any rate below.
+TAKE = {
+    'seed': 101,
+    'column': 2,
+    'colour': 'red',
+    'model': 'book_col_3_row_2_red',
+    'delivered_sim_s': 107.8,
+    'timer_wall_s': 221.3,
+    'video_s': 274,
+    'carry_sim_s': 7.8,
+    'collisions': 1,
+    'rtf': 0.487,
+}
+
 
 # --------------------------------------------------------------------------
 # Trial data
@@ -341,16 +361,20 @@ def title_page(doc, summary, baseline):
     fig.text(0.5, 0.158, 'Ubuntu 22.04 · ROS 2 Humble · Gazebo Sim 8.15.0 '
                          '(Harmonic)', size=8, color=INK, ha='center')
 
-    if summary:
-        fig.text(0.5, 0.104,
-                 '{} recorded trials · column identified in {}/{} · '
-                 'book row and position in {}/{}'.format(
-                     summary['n'], summary['column'], summary['n'],
-                     summary['row'], summary['n']),
-                 size=8.5, color=MUTED, ha='center')
-    fig.text(0.5, 0.082,
-             'Grasp retention is an open blocker; no points gated on it are '
-             'claimed.', size=8.5, color='#8a3b2e', ha='center')
+    fig.text(0.5, 0.104,
+             'Task completed end to end on the live simulator: {} in the '
+             'collection bin at t+{:.1f} s,'.format(
+                 TAKE['model'], TAKE['delivered_sim_s']),
+             size=8.5, color=ACCENT, ha='center')
+    fig.text(0.5, 0.085,
+             "reported by the organisers' own /bin_contacts sensor. One "
+             'unedited take, {:d}:{:02d}.'.format(
+                 TAKE['video_s'] // 60, TAKE['video_s'] % 60),
+             size=8.5, color=ACCENT, ha='center')
+    fig.text(0.5, 0.060,
+             'That is one run, not a rate: the carry is timing-critical and '
+             'runs still drop the book (section 5).',
+             size=8.0, color='#8a3b2e', ha='center')
 
 
 # --------------------------------------------------------------------------
@@ -633,7 +657,57 @@ def build():
         # ----------------------------------------------------------- 5. results
         doc.new_page()
         doc.h1('5  Results')
+        doc.block('h2', 'The delivering run')
+        doc.block('body',
+                  'The task has been completed end to end on the live '
+                  'simulator, in one continuous unedited take, and the '
+                  'completion was reported by the organisers\' own contact '
+                  'sensor rather than by our gripper opening. Seed {}, shelf '
+                  'column {}, {} book. The line that ends the run is:'.format(
+                      TAKE['seed'], TAKE['column'], TAKE['colour']))
+        doc.block('mono',
+                  'OFFICIAL COMPLETION EVENT: {} contacted the collection '
+                  'bin at t+{:.1f} s'.format(
+                      TAKE['model'], TAKE['delivered_sim_s']))
+        doc.block('body',
+                  'The model name is the simulator\'s own, read back '
+                  'afterwards as a consistency check and never used to choose '
+                  'anything: the plate numbered {} hangs above physical slot 3, '
+                  'and SDF row_2 is competition row 1. The run\'s own evidence '
+                  'image records the mapping it read - "requested column {} to '
+                  'physical shelf slot 3", plates 3@slot1, 5@slot2, 2@slot3, '
+                  '1@slot4, 4@slot5.'.format(TAKE['column'], TAKE['column']))
+        doc.table(
+            ['Quantity', 'Value', 'Where it comes from'],
+            [['Delivery', 't+{:.1f} simulated s'.format(
+                TAKE['delivered_sim_s']), 'organiser /bin_contacts'],
+             ['Trial timer / video', '{:.1f} wall s  ·  {:d}:{:02d} take'.format(
+                 TAKE['timer_wall_s'], TAKE['video_s'] // 60,
+                 TAKE['video_s'] % 60),
+              'realised real-time factor {:.3f}'.format(TAKE['rtf'])],
+             ['Carry, grasp to release', '{:.1f} simulated s'.format(
+                 TAKE['carry_sim_s']), 'against a grip good for 6-11 s'],
+             ['Collisions', '{} (arm_right_6_link, during RETREAT)'.format(
+                 TAKE['collisions']), 'organiser /contacts']],
+            [0.26, 0.36, 0.38],
+            note='Two clocks, and they are not the same clock: the mission '
+                 'counts simulated seconds (use_sim_time), the video timer '
+                 'counts wall seconds from solution.launch.py. The take has no '
+                 'machine-readable record - the recorder ends on the delivery '
+                 'event, before the run writes one - so its logs, frames and '
+                 'checksums are committed at media/ and it is excluded from '
+                 'every rate below.')
         if formal:
+            doc.block('h2', 'Recorded trials')
+            doc.block('body',
+                      'These are the machine-readable trial records in '
+                      'results/, one JSON per run, written by the solution '
+                      'itself. They predate the extraction work described in '
+                      'section 4 and every one of them ends at the retention '
+                      'check or earlier, so they are the identification and '
+                      'measurement evidence, not delivery evidence. They are '
+                      'kept rather than replaced because that is what they '
+                      'honestly show.')
             rows = []
             for t in formal:
                 det = t['detected']
@@ -660,8 +734,11 @@ def build():
                        0.055, 0.070, 0.070], size=6.8,
                 note='Score is a LOCAL ESTIMATE from the implemented rubric, '
                      'not an official result: gentle-versus-drop and collision '
-                     'intent are judge decisions. Times are simulated seconds; '
-                     'divide by the 0.362 real-time factor for wall clock.')
+                     'intent are judge decisions. Times are simulated seconds. '
+                     'These runs were recorded in software rendering at a '
+                     'real-time factor of 0.362; on the GPU the simulator runs '
+                     'at 0.65-0.70 headless and the delivering take realised '
+                     '0.487 with the viewer up.')
             doc.block('h2', 'Rates')
             doc.table(
                 ['Metric', 'Value', 'Denominator'],
@@ -679,7 +756,7 @@ def build():
                   'recorded trials'],
                  ['Delivered to bin',
                   '{}/{}'.format(summary['delivered'], summary['n']),
-                  'recorded trials'],
+                  'recorded trials (all predate the fix)'],
                  ['Collision events (total)',
                   str(summary['collisions']), 'across all trials'],
                  ['Mean estimated score',
@@ -693,49 +770,64 @@ def build():
             doc.block('note',
                       'NO TRIAL RECORDS FOUND in results/. This report is '
                       'INCOMPLETE and must not be submitted in this state.')
-        doc.block('h2', 'What the failures were')
         if formal:
-            # Read the failures out of the records rather than describing them
-            # from memory, so this section cannot drift from what happened.
-            for t in formal:
-                reason = t.get('failure_reason') or 'completed'
-                doc.bullet('{}: {}'.format(t['run_id'], reason[:150]))
-            stalled = sum(1 for t in formal
-                          if 'located' in (t.get('failure_reason') or ''))
-            reached = summary['n'] - stalled
+            # Count the failures out of the records rather than describing them
+            # from memory, so this cannot drift from what actually happened.
+            reasons = [(t.get('failure_reason') or '') for t in formal]
+            retention = sum(1 for r in reasons
+                            if 'retention' in r or 'lost during extraction' in r)
+            planning = sum(1 for r in reasons if 'plan rejected' in r)
             doc.block('body',
-                      '{} of {} runs failed before the arm was used at all, at '
-                      'book identification: the target colour was not detected '
-                      'among the books the robot could see from its scan pose. '
-                      '{} reached the shelf and the grasp. Because the rubric '
-                      'awards shelf navigation on a successful grasp and the '
-                      'return on a successful delivery, a failure at the grasp '
-                      'costs 13 of the 19 available points, not 3.'.format(
-                          stalled, summary['n'], reached))
-            doc.block('note',
-                      'Two further trials were run and are not tabulated: they '
-                      'exceeded the per-trial wall-clock cap of the batch '
-                      'harness before reaching a terminal state, so no record '
-                      'was written. They are excluded rather than counted as '
-                      'either outcome.')
+                      'All {} reached the shelf and closed on the right book. '
+                      '{} then failed at retention - the fingertips lost the '
+                      'book after the lift or during extraction - and {} was an '
+                      'IK refusal at the refine step. That is the problem of '
+                      'section 6, and the work since (the above-centre pinch, '
+                      'the ramped retreat, the direct carry) is what turned it '
+                      'into the delivering run above. It costs more than it '
+                      'looks: the rubric awards shelf navigation on a successful '
+                      'grasp and the return on a successful delivery, so a '
+                      'failure at the grasp costs 13 of the 19 points, not 3. '
+                      'Two further trials exceeded the harness wall-clock cap '
+                      'before reaching a terminal state and wrote no record; '
+                      'they are excluded rather than counted either way.'.format(
+                          summary['n'], retention, planning))
 
         # ------------------------------------------------------- 6. limitations
         doc.new_page()
         doc.h1('6  Limitations and future work')
-        doc.block('h2', 'The open blocker')
+        doc.block('h2', 'The grip is a clock')
         doc.block('body',
-                  'Grasp retention. The evidence points at two properties of the '
-                  'provided environment rather than at the approach: the book '
-                  'collision declares max_contacts 4, so one fingertip can '
-                  'consume the whole budget and the opposing finger gets no '
-                  'contact constraint and therefore no opposing normal force; '
-                  'and position commands are realised as kinematic velocity '
-                  'setpoints, so the gripper cannot apply a clamping force at '
-                  'all. Increasing the squeeze from 6 mm to 16 mm of '
-                  'interference changed nothing. A minimal reproducer, with the '
-                  'exact environment version and logs, is in '
-                  'docs/grasp_blocker.md, and is the first thing we would raise '
-                  'with the organisers.')
+                  'Grasp retention was the open blocker of the previous '
+                  'revision. It no longer blocks - the book is grasped, '
+                  'extracted, carried and delivered - but it is not solved, '
+                  'and the distinction matters. The pads sit on mimic joints '
+                  'whose URDF effort limit is 0.1 N m, gz_ros2_control enforces '
+                  'a mimic with a velocity servo capped at that limit, and '
+                  'nothing in the provided world offers an attach mechanism. '
+                  'The grip is therefore friction against a hinge that can be '
+                  'pushed open: the book creeps out of the pads under its own '
+                  'weight and stays held, measured, for 6 to 11 seconds once it '
+                  'hangs free. Squeezing harder does not help - 6 mm to 16 mm '
+                  'of interference changed nothing, and past a point it simply '
+                  'loads those hinges.')
+        doc.block('body',
+                  'What made delivery possible was accepting that and sizing '
+                  'the task to it: the bin is identified before the shelf trip, '
+                  'so no time is spent hunting for it with a book in hand; the '
+                  'drive starts while the hold is still being confirmed; and '
+                  'the arm holds still throughout the carry, because every arm '
+                  'motion swings the book. The delivering take carried it for '
+                  '{:.1f} s against a grip good for 6 to 11. That margin is why '
+                  'runs still fail - of two validation trials after the fix, '
+                  'one dropped the book 3.0 s into the carry and one lost it '
+                  'during extraction, both having already identified, measured '
+                  'and grasped the correct book. Widening the margin needs a '
+                  'higher effort limit on those joints or an attach mechanism '
+                  'in the world: properties of the provided environment, not of '
+                  'this approach. The measurements, the reproducer and the four '
+                  'remedies tried and reverted are in docs/grasp_blocker.md.'
+                  .format(TAKE['carry_sim_s']))
         doc.block('h2', 'What changed during this work')
         doc.table(
             ['Defect found', 'Resolution'],
@@ -761,8 +853,9 @@ def build():
               'Now committed as required evidence']],
             [0.50, 0.50], size=7.2)
         doc.block('h2', 'Remaining work')
-        doc.bullet('Resolve grasp retention, then re-run the full trial matrix '
-                   'and record delivery and placement outcomes.')
+        doc.bullet('Widen the retention margin rather than living inside it, '
+                   'then re-run the trial matrix against the delivering '
+                   'solution: one delivery is not a measured rate.')
         doc.bullet('Replace the coarse advisory clearance model - a padded '
                    'polyline through link origins - with proper swept-volume '
                    'checking. It is good enough to rank IK solutions and not '
@@ -773,27 +866,24 @@ def build():
                    'randomised layouts, rather than the recorded subset.')
         doc.block('h2', 'Simulation versus physical deployment')
         doc.block('body',
-                  'Nothing here has run on hardware, and two of the findings in '
-                  'this report are specific to the simulator: the kinematic '
-                  'gripper and the contact budget on the book model would both '
-                  'behave differently on a real TIAGo Pro, where the gripper '
-                  'applies a real force and contact is continuous. Conversely, '
-                  'a physical robot brings problems this work has not had to '
-                  'face - odometry drift over a long run, lighting variation '
-                  'that would break tight HSV bands, and books that are not '
-                  'uniform saturated primaries. The perception approach would '
-                  'need re-grounding in real imagery before any of it '
-                  'transfers.')
+                  'Nothing here has run on hardware, and the central finding of '
+                  'this report is specific to the simulator: a kinematic '
+                  'gripper on a 0.1 N m mimic hinge behaves nothing like a real '
+                  'TIAGo Pro applying a real force to a continuous contact. '
+                  'Conversely, a physical robot brings problems this work has '
+                  'not faced - odometry drift over a long run, lighting that '
+                  'would break tight HSV bands, and books that are not uniform '
+                  'saturated primaries. The perception approach would need '
+                  're-grounding in real imagery before any of it transfers.')
         doc.block('h2', 'Longer-term intent')
         doc.block('body',
                   'Rafeeq is named for the Arabic for companion, and the intent '
                   'behind it is a library assistant that fetches books for '
                   'people who cannot reach or navigate the stacks. None of that '
-                  'accessibility work is implemented: there is no voice '
-                  'interface, no accessibility testing and no deployment with '
-                  'People of Determination. It is the motivation for the '
-                  'project and the direction of travel, not a claim about this '
-                  'submission.')
+                  'accessibility work is implemented - no voice interface, no '
+                  'accessibility testing, no deployment with People of '
+                  'Determination. It is the direction of travel, not a claim '
+                  'about this submission.')
 
         doc.close()
 
