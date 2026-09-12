@@ -195,32 +195,42 @@ kill "$TITLE" $LOGO_PID 2>/dev/null
 # xterm geometry is in characters; at -fs 11 a cell is ~8 x 17 px.
 
 # 2. simulation.launch.py, typed and launched on camera.
-SIM_CMD="ros2 launch erc_bringup simulation.launch.py"
-if [ -n "$SEED" ]; then
-    SIM_CMD="export ERC_SEED=$SEED   # fixed arena layout, as in the test log
-$SIM_CMD"
-fi
+#
+# The world is started without its viewer and the viewer is attached once the
+# robot is in it.  Started together, the viewer builds its scene from whatever
+# the server has at that instant, and the robot is spawned into the world a
+# moment later: when the viewer loses that race the recording shows the arena
+# with no robot in it - the shelf, the table and the bin, and nothing between
+# them - for the whole run.  One finished take was lost to it.  Attaching the
+# viewer afterwards asks the server for a scene that already has the robot, so
+# there is no race left to lose.
 SIM_LOG="$WORK/simulation.log"
-term 'simulation.launch.py' '80x25+1280+170' 11 "$WORK/typed.sh" \
-    "${SIM_CMD%%$'\n'*}" \
-    ${SEED:+"ros2 launch erc_bringup simulation.launch.py 2>&1 | tee $SIM_LOG"}
+LAUNCH_SIM="ros2 launch erc_bringup simulation.launch.py headless:=true 2>&1 | tee $SIM_LOG"
+if [ -n "$SEED" ]; then
+    term 'simulation.launch.py' '80x25+1280+170' 11 "$WORK/typed.sh" \
+        "export ERC_SEED=$SEED   # fixed arena layout, as in the test log" \
+        "$LAUNCH_SIM"
+else
+    term 'simulation.launch.py' '80x25+1280+170' 11 "$WORK/typed.sh" "$LAUNCH_SIM"
+fi
 
-# Wait for the simulator window and put it where the camera can see it.  The
-# window is still being laid out when it first maps and a single resize is
-# lost, so it is placed again until it sticks.
+# The viewer's window, placed where the camera can see it.  The window is
+# still being laid out when it first maps and a single resize is lost, so it
+# is placed again until it sticks.  It is made wider than the 1280 px the
+# recording gives it: Gazebo's world and entity-tree panels take the overflow
+# and sit under the terminal column, which leaves the whole 1280 px to the
+# view of the arena - half again as many pixels on the robot as before.
 place_gazebo () {
     local w
     for w in $(xdotool search --name 'Gazebo' 2>/dev/null); do
         xdotool windowmove --sync "$w" 0 0 2>/dev/null
-        xdotool windowsize --sync "$w" 1280 1080 2>/dev/null
+        xdotool windowsize --sync "$w" 1700 1080 2>/dev/null
+    done
+    for w in $(xdotool search --name 'launch.py' 2>/dev/null) \
+             $(xdotool search --name 'TRIAL TIMER' 2>/dev/null); do
+        xdotool windowraise "$w" 2>/dev/null
     done
 }
-for _ in $(seq 1 120); do
-    GZW=$(xdotool search --name 'Gazebo' 2>/dev/null | head -1)
-    [ -n "$GZW" ] && break
-    sleep 1
-done
-for _ in 1 2 3; do sleep 2; place_gazebo; done
 
 # Wait until the arena is fully spawned - all 20 books present - before the
 # trial starts, then give the controllers a moment to come up.
@@ -240,6 +250,16 @@ if [ "${n:-0}" -lt 20 ]; then
     tail -25 "$SIM_LOG" 2>/dev/null || echo "(no simulator log)"
     exit 1
 fi
+
+# The robot is in the world, so the viewer can be started: whatever scene it
+# builds now has the robot in it.  Started here rather than after the
+# controllers, its own startup runs while the controllers come up and costs
+# the recording nothing - and a recording has five minutes to spend.
+for _ in $(seq 1 24); do
+    timeout 20 gz model --list 2>/dev/null | grep -q 'tiago_pro' && break
+    sleep 5
+done
+gz sim -g > "$WORK/gui.log" 2>&1 &
 
 # The arena is not the robot.  The organisers' launch races its own
 # controller_manager, and measured on this machine every spawner can die with
@@ -263,19 +283,79 @@ if [ "$READY" != yes ]; then
         | tail -12
     exit 1
 fi
+# The robot is in the world; now attach the viewer to it.
+gaze () {   # point the camera at a side-on overview that holds the shelf, the
+            # robot and the bin in one shot for the whole trial.  This moves
+            # the viewer's camera only; nothing in the simulation is touched.
+    timeout 10 gz service -s /gui/move_to/pose --reqtype gz.msgs.GUICamera \
+        --reptype gz.msgs.Boolean --timeout 3000 \
+        --req 'pose: {position: {x: 0.95, y: -3.9, z: 3.05}, orientation: {w: 0.6815, x: -0.1886, y: 0.1886, z: 0.6815}}' \
+        >/dev/null 2>&1
+}
+
+# Is the robot in the picture?  Asking the viewer to follow it answers that and
+# nothing else does: the follow target comes back named when the viewer has the
+# robot in its scene, and empty when it has not.  The camera is put back
+# afterwards, which is why this runs before the trial starts.
+robot_on_camera () {
+    local tracked
+    timeout 10 gz service -s /gui/follow --reqtype gz.msgs.StringMsg \
+        --reptype gz.msgs.Boolean --timeout 3000 --req 'data: "tiago_pro"' \
+        >/dev/null 2>&1
+    sleep 3
+    tracked=$(timeout 8 gz topic -e -t /gui/currently_tracked -n 1 2>/dev/null)
+    timeout 10 gz service -s /gui/follow --reqtype gz.msgs.StringMsg \
+        --reptype gz.msgs.Boolean --timeout 3000 --req 'data: ""' \
+        >/dev/null 2>&1
+    sleep 2
+    gaze
+    echo "$tracked" | grep -q 'name: "tiago_pro"'
+}
+
+settle_gui () {
+    for _ in $(seq 1 90); do
+        [ -n "$(xdotool search --name 'Gazebo' 2>/dev/null | head -1)" ] && break
+        sleep 1
+    done
+    for _ in 1 2 3; do sleep 2; place_gazebo; done
+    gaze
+    sleep 2
+}
+
+settle_gui
+if ! robot_on_camera; then
+    # A viewer started again on the same world builds its scene from scratch,
+    # so that is the one thing worth trying.  The world itself is untouched:
+    # the server is running headless and has no idea the viewer went away.
+    echo "the viewer came up without the robot in it; restarting the viewer"
+    pkill -f 'gz sim gui' 2>/dev/null; pkill -f 'gz sim -g' 2>/dev/null
+    sleep 3
+    gz sim -g > "$WORK/gui.log" 2>&1 &
+    settle_gui
+    if ! robot_on_camera; then
+        echo "the viewer still has no robot in its scene; abandoning this take"
+        echo "--- the viewer's own output"
+        tail -20 "$WORK/gui.log" 2>/dev/null
+        exit 1
+    fi
+fi
 place_gazebo
-# Point the simulator's camera at a side-on overview that keeps the shelf, the
-# robot and the bin in one shot for the whole trial.  This only moves the
-# viewer's camera; nothing in the simulation is touched.
-timeout 10 gz service -s /gui/move_to/pose --reqtype gz.msgs.GUICamera \
-    --reptype gz.msgs.Boolean --timeout 3000 \
-    --req 'pose: {position: {x: 0.8, y: -4.0, z: 3.2}, orientation: {w: 0.6815, x: -0.1886, y: 0.1886, z: 0.6815}}' \
-    >/dev/null 2>&1
 # The solution waits for the controllers itself (WAIT_READY observes them),
-# so there is nothing to gain from sitting here.
+# so there is nothing to gain from sitting here.  The camera does need it: the
+# viewer glides back from the robot it was asked to follow rather than cutting,
+# and a frame taken before it lands shows a view the trial never had.
 sleep 5
+# Keep the frame the trial starts from, so what the recording shows can be
+# checked without watching the recording.
+ffmpeg -loglevel error -y -f x11grab -video_size "${W}x${H}" -i "$DISPLAY" \
+    -frames:v 1 "$WORK/first_frame.png" 2>/dev/null
 
 # 3. solution.launch.py - the trial starts here, and so does the timer.
+# The marker dates the trial, so the images the solution writes during it can be
+# told from every earlier run's.  The launch is typed with the judges' two
+# arguments and nothing else, so the evidence lands wherever the package's own
+# default puts it; it is collected afterwards rather than redirected here.
+touch "$WORK/trial_start"
 term 'TRIAL TIMER' '38x5+1280+0' 20 "$WORK/timer.sh"
 term 'solution.launch.py' '80x28+1280+600' 11 "$WORK/typed.sh" \
     "ros2 launch rafeeq_solution solution.launch.py shelf_column_number:=$COLUMN book_colour:=$COLOUR 2>&1 | tee $SOLUTION_LOG"
@@ -295,6 +375,11 @@ while :; do
     fi
     sleep 1
 done
+# The frame the run ends on.  The take that had to be thrown away looked right
+# at the start and had no robot in it at the end, so proving the framing at
+# t = 0 proves only t = 0: keep the other end too.
+ffmpeg -loglevel error -y -f x11grab -video_size "${W}x${H}" -i "$DISPLAY" \
+    -frames:v 1 "$WORK/result_frame.png" 2>/dev/null
 # Hold on the final frame so the result and the frozen timer are readable.
 sleep 5
 
@@ -312,6 +397,31 @@ ffmpeg -loglevel error -y -i "$WORK/take.mkv" -c:v libx264 -preset medium \
 # cause of death before it could be read.
 cp -f "$SOLUTION_LOG" "${OUT%.mp4}_solution.log" 2>/dev/null
 cp -f "$SIM_LOG" "${OUT%.mp4}_simulation.log" 2>/dev/null
+cp -f "$WORK/first_frame.png" "${OUT%.mp4}_first_frame.png" 2>/dev/null
+cp -f "$WORK/result_frame.png" "${OUT%.mp4}_result_frame.png" 2>/dev/null
+
+# The images the solution wrote during this trial, which it puts wherever the
+# package's default sends them - not necessarily anywhere the host can see.
+# They are the identification evidence: which plate was read above which
+# physical slot, and which book was chosen.  Collected by date so an earlier
+# run's images cannot be mistaken for this one's.
+EVIDENCE="${OUT%.mp4}_evidence"
+rm -rf "$EVIDENCE"
+mkdir -p "$EVIDENCE"
+for dir in /opt/erc_ws/erc_images /opt/erc_ws/src/erc_images "$ERC_IMAGES_DIR"; do
+    [ -d "$dir" ] || continue
+    find "$dir" -maxdepth 1 -name '*.png' -newer "$WORK/trial_start" \
+        -exec cp -f {} "$EVIDENCE/" \; 2>/dev/null
+done
+rmdir "$EVIDENCE" 2>/dev/null   # leave nothing behind if the run wrote nothing
+
+# Anchor the take.  Uploading re-encodes it and the container's /tmp does not
+# survive, so without this nobody can show afterwards that a published video is
+# this run.
+( cd "$(dirname "$OUT")" && sha256sum "$(basename "$OUT")" \
+    "$(basename "${OUT%.mp4}")_solution.log" \
+    "$(basename "${OUT%.mp4}")_simulation.log" 2>/dev/null ) \
+    > "${OUT%.mp4}.sha256"
 
 echo "result: $(grep -aoE 'OFFICIAL COMPLETION EVENT.*|RUN .* (COMPLETE|FAILED).*' \
     "$SOLUTION_LOG" | tail -1)"
