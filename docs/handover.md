@@ -138,7 +138,7 @@ what to budget against the five-minute limit rather than the spot figure.
 
 ```bash
 # inside the simulation container
-cp docs/assets/rafeeq_logo.png /tmp/rafeeq_logo.png
+cp docs/assets/rafeeq_logo.* /tmp/
 tools/record_trial.sh <column 1-5> <colour> [seed]
 ```
 
@@ -183,7 +183,7 @@ view of the arena.
 | `OUT` | `/tmp/rafeeq_trial.mp4` | Output file |
 | `FPS` | `15` | Capture frame rate |
 | `TRIAL_LIMIT` | `900` | Seconds before the take is abandoned |
-| `LOGO` | `/tmp/rafeeq_logo.png` | Title-card logo, shown beside the team name if `feh` is installed |
+| `LOGO` | auto-detected | Title-card logo, shown beside the team name if `feh` is installed. Found by name, not extension: a staged `/tmp/rafeeq_logo.*` first, then the repository's `docs/assets/rafeeq_logo.*` |
 
 What it needs that the image does not ship: `docker/Dockerfile` installs no
 `ffmpeg`, `Xvfb`, `xterm`, `xdotool` or `feh`, and the script uses all five.
@@ -433,7 +433,7 @@ invisible from the topics; only a look at the picture finds it, which is what
 | ~~Grasp retention~~ | **fixed** — see [`grasp_blocker.md`](grasp_blocker.md); the carry remains timing-critical |
 | ~~Record the demonstration video~~ | **done** — one delivering take, 4:34, unedited, with the robot visibly in the arena |
 | ~~The tucked left arm brushes the table~~ | **fixed** |
-| ~~Save the logo~~ | **done** — `docs/assets/rafeeq_logo.png` |
+| ~~Save the logo~~ | **done** — `docs/assets/rafeeq_logo.jpeg` |
 
 ## Release safety
 

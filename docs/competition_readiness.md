@@ -262,7 +262,7 @@ trusted.
 | Root `README.md` rewrite | **verified** |
 | `report/Rafeeq_ERC2026_Phase1_Report.pdf` | **verified** — 6 pages (title + 5 body), 0.17 MB, every figure read from `results/` at build time. Predates the delivering run. |
 | `docs/odometry_drift.md` | **verified** |
-| `docs/assets/rafeeq_logo.png` (README and report title page) | **verified** |
+| `docs/assets/rafeeq_logo.jpeg` (README and report title page) | **verified** |
 | Demonstration video | **recorded** — 4:34 (274 s), 1920x1080 at 15 fps, 11.7 MiB. One continuous unedited take, no speed-up, team title card first, both launch files typed on camera, live trial timer, ending on the official completion event with the timer frozen at 221.3 s on `BOOK DELIVERED`. Produced by `tools/record_trial.sh`, which keeps the trial's opening frame (`*_first_frame.png`) and the solution and simulator logs beside it. Not committed to this repository. |
 | Trial records regenerated against the delivering solution | not yet done — and the delivering take writes none of its own: the recorder ends it on the completion event, before `_finish` reaches the record (§5) |
 | `v1.0.0` release against the validated commit | not yet prepared |

@@ -461,6 +461,18 @@ class ManipulationNode(Node):
         seq, verb, args = int(parts[0]), parts[1].strip().lower(), parts[2:]
 
         if self.job:
+            # The same command arriving twice is the same command, not a
+            # conflicting one.  The mission publishes on a latched topic, so a
+            # subscriber that matches while the first message is still in
+            # flight receives it again - and a run died 1.8 s in, reporting
+            # "busy with home", because the second copy of home [1] was
+            # answered with a failure the mission treats as fatal.  Only a
+            # genuinely different command is a conflict.
+            if seq == self.job_seq and verb == self.job_verb:
+                self.get_logger().info(
+                    'ignoring a repeat of {} [{}]; already running it'.format(
+                        verb, seq))
+                return
             self.get_logger().warn(
                 'busy with {} [{}]; rejecting {} [{}]'.format(
                     self.job_verb, self.job_seq, verb, seq))

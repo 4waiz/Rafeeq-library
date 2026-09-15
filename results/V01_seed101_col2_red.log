@@ -1,0 +1,141 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-09-12-19-26-51-323622-Awaiz-2017
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: [rafeeq] Team Kanban | target column 2, red book | grasping with the right arm | evidence -> /opt/erc_ws/erc_images
+[INFO] [perception_node-1]: process started with pid [2019]
+[INFO] [navigation_node-2]: process started with pid [2021]
+[INFO] [manipulation_node-3]: process started with pid [2023]
+[INFO] [mission_node-4]: process started with pid [2025]
+[navigation_node-2] [0m[INFO] [1789241211.561338997] [rafeeq_navigation]: navigation up | holonomic waypoint control on /odom, both lidars used for a full-circle clearance check, spawn_yaw=1.5708 rad[0m
+[mission_node-4] [0m[INFO] [1789241211.596443186] [rafeeq_mission]: 
+[mission_node-4] ==================================================================
+[mission_node-4] RAFEEQ LIBRARY ROBOT - Team Kanban - ERC 2026 Phase 1
+[mission_node-4] run V01_seed101_col2_red: shelf column 2, red book
+[mission_node-4] ==================================================================[0m
+[mission_node-4] [0m[INFO] [1789241211.596842483] [rafeeq_mission]: [STATE] WAIT_READY  (t+0.0 s)[0m
+[mission_node-4] [0m[INFO] [1789241211.597015119] [rafeeq_mission]: waiting for controllers, joint feedback and odometry (no fixed sleep - readiness is observed)[0m
+[mission_node-4] [0m[INFO] [1789241211.598876766] [rafeeq_mission]: simulation clock is live at t=19.5 s; trial clock started[0m
+[perception_node-1] [0m[INFO] [1789241211.773070766] [rafeeq_perception]: perception up | target column=2 colour=red | digit templates=[1, 2, 3, 4, 5] | images -> /opt/erc_ws/erc_images[0m
+[manipulation_node-3] [0m[INFO] [1789241214.926385274] [rafeeq_manipulation]: IK chain: 8 DOF (torso_lift_joint, arm_right_1_joint, arm_right_2_joint, arm_right_3_joint, arm_right_4_joint, arm_right_5_joint, arm_right_6_joint, arm_right_7_joint), seed workspace warmed in 3.3 s[0m
+[manipulation_node-3] [0m[INFO] [1789241214.926943514] [rafeeq_manipulation]: manipulation up | arm=right | IK chain ready | gripper topic /gripper_right_controller/joint_trajectory[0m
+[manipulation_node-3] [0m[INFO] [1789241214.929252638] [rafeeq_manipulation]: all controllers, actions and joint feedback are up[0m
+[mission_node-4] [0m[INFO] [1789241214.995056259] [rafeeq_mission]: everything reported ready after 1.9 s[0m
+[mission_node-4] [0m[INFO] [1789241214.995597833] [rafeeq_mission]: [STATE] HOME  (t+1.9 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241240.848370987] [rafeeq_manipulation]: home [1] done[0m
+[mission_node-4] [0m[INFO] [1789241241.217183622] [rafeeq_mission]: [STATE] FACE_BIN  (t+16.9 s)[0m
+[navigation_node-2] [0m[INFO] [1789241241.219180078] [rafeeq_navigation]: goal: world (+0.00, +0.00, +180.0 deg)[0m
+[navigation_node-2] [0m[INFO] [1789241247.151487784] [rafeeq_navigation]: reached world (+0.000, +0.000), 0.000 m along and 0.001 m across the heading, 1.1 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241247.232546781] [rafeeq_mission]: [STATE] BIN_POSE  (t+20.5 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241248.735477373] [rafeeq_manipulation]: head [2] done[0m
+[mission_node-4] [0m[INFO] [1789241248.887343331] [rafeeq_mission]: [STATE] DETECT_BIN  (t+21.5 s)[0m
+[perception_node-1] [0m[INFO] [1789241248.888709800] [rafeeq_perception]: mode -> bin[0m
+[perception_node-1] [0m[INFO] [1789241249.160343841] [rafeeq_perception]: waiting for transforms to catch up with the stopped base before deprojecting[0m
+[mission_node-4] [0m[INFO] [1789241249.162849584] [rafeeq_mission]: perception: bin:searching:no_depth[0m
+[perception_node-1] [0m[INFO] [1789241250.787442393] [rafeeq_perception]: camera frames are stamped ahead of /tf on this bridge; using the latest transform while the base is stationary (<= 0.02 m/s)[0m
+[perception_node-1] [0m[INFO] [1789241251.333852848] [rafeeq_perception]: BIN CONFIRMED: observed (-1.200, -0.064, 0.752), placing at (-0.920, -0.064, 0.950) -> /opt/erc_ws/erc_images/red_bin_20260912_192731_329.png[0m
+[mission_node-4] [0m[INFO] [1789241251.365632492] [rafeeq_mission]: collection bin identified at world (-0.920, -0.064, 0.950)[0m
+[mission_node-4] [0m[INFO] [1789241251.365889693] [rafeeq_mission]: [STATE] FACE_SHELF  (t+23.1 s)[0m
+[navigation_node-2] [0m[INFO] [1789241251.366814551] [rafeeq_navigation]: goal: world (+0.00, +0.00, +0.0 deg)[0m
+[navigation_node-2] [0m[INFO] [1789241260.333901489] [rafeeq_navigation]: reached world (+0.000, +0.000), 0.000 m along and 0.000 m across the heading, 1.0 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241260.574734284] [rafeeq_mission]: [STATE] SCAN_POSE  (t+28.5 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241265.417296426] [rafeeq_manipulation]: scan_markers [3] done[0m
+[mission_node-4] [0m[INFO] [1789241265.589043702] [rafeeq_mission]: [STATE] DETECT_COLUMN  (t+31.5 s)[0m
+[perception_node-1] [0m[INFO] [1789241265.590168941] [rafeeq_perception]: mode -> column[0m
+[perception_node-1] [0m[INFO] [1789241269.867612123] [rafeeq_perception]: COLUMN CONFIRMED: number 2 is above physical column 3 (world y = +0.00 m) -> /opt/erc_ws/erc_images/shelf_column_20260912_192749_862.png[0m
+[mission_node-4] [0m[INFO] [1789241270.010325338] [rafeeq_mission]: number plate 2 identified above physical column 3 (world y = +0.00 m)[0m
+[mission_node-4] [0m[INFO] [1789241270.010687332] [rafeeq_mission]: [STATE] NAV_COLUMN  (t+33.9 s)[0m
+[navigation_node-2] [0m[INFO] [1789241270.011899507] [rafeeq_navigation]: goal: world (+1.40, -0.20, +0.0 deg)[0m
+[navigation_node-2] [0m[INFO] [1789241285.354108083] [rafeeq_navigation]: reached world (+1.400, -0.197), 0.020 m along and 0.001 m across the heading, 0.0 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241285.662096346] [rafeeq_mission]: [STATE] COLUMN_REF_POSE  (t+42.3 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241288.009793060] [rafeeq_manipulation]: scan_markers [4] done[0m
+[mission_node-4] [0m[INFO] [1789241288.339844740] [rafeeq_mission]: [STATE] COLUMN_REF  (t+44.3 s)[0m
+[perception_node-1] [0m[INFO] [1789241288.340571256] [rafeeq_perception]: mode -> column_ref[0m
+[mission_node-4] [0m[INFO] [1789241288.615573965] [rafeeq_mission]: perception: column_ref:searching:samples=1[0m
+[perception_node-1] [0m[INFO] [1789241289.159355003] [rafeeq_perception]: COLUMN REFERENCE: plate 2 measured at y = -0.197 m from the book-scan pose (spread 0.000 m over 3 frames); book columns are now judged against this, not against the image centre[0m
+[mission_node-4] [0m[INFO] [1789241289.299584768] [rafeeq_mission]: [STATE] BOOK_POSE  (t+44.9 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241294.326922188] [rafeeq_manipulation]: scan_books [5] done[0m
+[mission_node-4] [0m[INFO] [1789241294.501810397] [rafeeq_mission]: [STATE] DETECT_BOOK  (t+47.9 s)[0m
+[perception_node-1] [0m[INFO] [1789241294.502692504] [rafeeq_perception]: mode -> book[0m
+[perception_node-1] [0m[INFO] [1789241300.188195664] [rafeeq_perception]: BOOK CONFIRMED: red book in row 1 (ordering confirmed by height), measured at world (+2.874, -0.351, 1.580), -0.154 m off the column centre (against the measured plate); column chosen by plate reference (y -0.197, 4 book(s) within 0.40 m) -> /opt/erc_ws/erc_images/target_book_20260912_192820_181.png[0m
+[mission_node-4] [0m[INFO] [1789241300.418833427] [rafeeq_mission]: red book identified in row 1, measured at world (+2.874, -0.351, 1.580) - -0.351 m from the column centre[0m
+[mission_node-4] [0m[INFO] [1789241300.419142374] [rafeeq_mission]: [STATE] NAV_STAGE  (t+51.3 s)[0m
+[navigation_node-2] [0m[INFO] [1789241300.420685902] [rafeeq_navigation]: goal: world (+1.52, -0.35, +0.0 deg)[0m
+[navigation_node-2] [0m[INFO] [1789241308.379207256] [rafeeq_navigation]: reached world (+1.524, -0.351), 0.018 m along and 0.020 m across the heading, 0.0 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241308.456416167] [rafeeq_mission]: [STATE] REFRESH_BOOK  (t+55.7 s)[0m
+[perception_node-1] [0m[INFO] [1789241308.457460415] [rafeeq_perception]: mode -> book[0m
+[perception_node-1] [0m[INFO] [1789241308.762372529] [rafeeq_perception]: waiting for transforms to catch up with the stopped base before deprojecting[0m
+[mission_node-4] [0m[INFO] [1789241309.828392589] [rafeeq_mission]: perception: book:searching:no_depth[0m
+[perception_node-1] [0m[INFO] [1789241315.188549884] [rafeeq_perception]: BOOK CONFIRMED: red book in row 1 (ordering confirmed by height), measured at world (+2.873, -0.357, 1.582), -0.153 m off the column centre (against the measured plate); column chosen by plate reference (y -0.203, 4 book(s) within 0.40 m) -> /opt/erc_ws/erc_images/target_book_20260912_192835_179.png[0m
+[mission_node-4] [0m[INFO] [1789241315.224712054] [rafeeq_mission]: re-measured the book from the staging pose at world (+2.873, -0.357, 1.582)[0m
+[mission_node-4] [0m[INFO] [1789241315.225187524] [rafeeq_mission]: [STATE] PLAN_GRASP  (t+59.7 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241319.835511697] [rafeeq_manipulation]: grasp plan: finger axis -y, grasp 0.072 m up the spine, torso 0.350 m, IK error 0.0030 m, base approach 0.75 m, retreat 0.34 m, tilt -90 deg, predicted shelf intrusion 0.000 m, book intrusion 0.000 m[0m
+[manipulation_node-3] [0m[INFO] [1789241319.835864636] [rafeeq_manipulation]: plan_grasp [6] done: grasp=2.2561,-0.3317,0.0000 ik_error=0.0030 retreat=1.9161,-0.3317,0.0000 roll=-y spine_offset=+0.072 stage=1.5061,-0.3317,0.0000[0m
+[mission_node-4] [0m[INFO] [1789241319.881843062] [rafeeq_mission]: grasp planned: roll -y, +0.072 m up the spine, IK error 0.0030 m[0m
+[mission_node-4] [0m[INFO] [1789241319.882232790] [rafeeq_mission]: [STATE] ARM_PREGRASP  (t+62.7 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241333.085225848] [rafeeq_manipulation]: arm_pregrasp [7] done[0m
+[mission_node-4] [0m[INFO] [1789241333.312011520] [rafeeq_mission]: [STATE] NAV_GRASP  (t+69.7 s)[0m
+[navigation_node-2] [0m[INFO] [1789241333.313798891] [rafeeq_navigation]: this goal is the grasp approach: holding to 0.006 m along and 0.008 m across the heading[0m
+[navigation_node-2] [0m[INFO] [1789241333.315206595] [rafeeq_navigation]: goal: world (+2.26, -0.33, +0.0 deg)[0m
+[navigation_node-2] [0m[INFO] [1789241354.919512480] [rafeeq_navigation]: reached world (+2.256, -0.332), 0.006 m along and 0.000 m across the heading, 0.0 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241355.238663790] [rafeeq_mission]: [STATE] REFINE  (t+80.3 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241357.799830986] [rafeeq_manipulation]: refine_grasp [8] done: refine_held_back=0.0059 refine_step=0.000[0m
+[mission_node-4] [0m[INFO] [1789241358.000129770] [rafeeq_mission]:   refine_held_back=0.0059 refine_step=0.000[0m
+[mission_node-4] [0m[INFO] [1789241358.000380147] [rafeeq_mission]: [STATE] CLOSE_GRASP  (t+81.5 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241378.053077684] [rafeeq_manipulation]: close_grasp [9] done: close_gap=0.0199 closed_on=book_col_3_row_2_red first_touch_gap=0.0276 holding=book_col_3_row_2_red pad_gap=0.0199[0m
+[mission_node-4] [0m[INFO] [1789241378.431259784] [rafeeq_mission]:   close_gap=0.0199 closed_on=book_col_3_row_2_red first_touch_gap=0.0276 holding=book_col_3_row_2_red pad_gap=0.0199[0m
+[mission_node-4] [0m[INFO] [1789241378.431585846] [rafeeq_mission]: [STATE] LIFT  (t+90.1 s)[0m
+[manipulation_node-3] [0m[INFO] [1789241385.508819759] [rafeeq_manipulation]: lift [10] done: held=book_col_3_row_2_red tool=0.572,-0.025,1.671 torso=0.350[0m
+[mission_node-4] [0m[INFO] [1789241386.258553048] [rafeeq_mission]:   held=book_col_3_row_2_red tool=0.572,-0.025,1.671 torso=0.350[0m
+[mission_node-4] [0m[INFO] [1789241386.259001761] [rafeeq_mission]: [STATE] RETREAT  (t+92.3 s)[0m
+[navigation_node-2] [0m[INFO] [1789241386.261140484] [rafeeq_navigation]: this goal carries the book: at most 0.12 m/s and 0.25 rad/s, ramped at 0.15 m/s^2 and 0.25 rad/s^2[0m
+[navigation_node-2] [0m[INFO] [1789241386.261753651] [rafeeq_navigation]: goal: world (+1.92, -0.33, +0.0 deg)[0m
+[mission_node-4] [33m[WARN] [1789241395.088131869] [rafeeq_mission]: collision #1: tiago_pro::arm_right_6_link::arm_right_6_link_collision hit book_col_3_row_2_red during RETREAT (-0.5)[0m
+[navigation_node-2] [0m[INFO] [1789241397.731811067] [rafeeq_navigation]: reached world (+1.916, -0.332), 0.059 m along and 0.000 m across the heading, 0.0 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241398.050849438] [rafeeq_mission]: [STATE] CONFIRM_HOLD  (t+96.3 s)[0m
+[mission_node-4] [0m[INFO] [1789241398.051811718] [rafeeq_mission]: driving to the bin while the hold is checked: base to world (-0.298, -0.089)[0m
+[perception_node-1] [0m[INFO] [1789241398.052951843] [rafeeq_perception]: mode -> bin[0m
+[navigation_node-2] [0m[INFO] [1789241398.053628918] [rafeeq_navigation]: this goal carries the book to the bin: ordinary speeds, ramped at 0.08 m/s^2 and 0.12 rad/s^2[0m
+[navigation_node-2] [0m[INFO] [1789241398.054589618] [rafeeq_navigation]: goal: world (-0.30, -0.09, +180.0 deg)[0m
+[mission_node-4] [0m[INFO] [1789241398.087009367] [rafeeq_mission]: perception: bin:searching:none[0m
+[manipulation_node-3] [0m[INFO] [1789241400.687157094] [rafeeq_manipulation]: check_hold [11] done: held=book_col_3_row_2_red tool=0.572,-0.025,1.671 torso=0.350[0m
+[mission_node-4] [0m[INFO] [1789241400.911457116] [rafeeq_mission]: BOOK ACQUIRED: red book from column 3 row 1 is held and clear of the shelf[0m
+[mission_node-4] [0m[INFO] [1789241400.911830804] [rafeeq_mission]: [STATE] CARRY_TO_BIN  (t+97.5 s)[0m
+[mission_node-4] [0m[INFO] [1789241400.912112290] [rafeeq_mission]: carrying the book straight to the bin: base to world (-0.298, -0.089) facing it, torso down to 0.200 m on the way[0m
+[perception_node-1] [0m[INFO] [1789241402.248169371] [rafeeq_perception]: waiting for transforms to catch up with the stopped base before deprojecting[0m
+[mission_node-4] [0m[INFO] [1789241402.248774282] [rafeeq_mission]: perception: bin:searching:no_depth[0m
+[mission_node-4] [0m[INFO] [1789241407.094850070] [rafeeq_mission]: perception: bin:searching:no_depth[0m
+[perception_node-1] [0m[INFO] [1789241407.850882964] [rafeeq_perception]: waiting for transforms to catch up with the stopped base before deprojecting[0m
+[manipulation_node-3] [0m[INFO] [1789241413.462676354] [rafeeq_manipulation]: torso [12] done[0m
+[perception_node-1] [0m[INFO] [1789241414.883727418] [rafeeq_perception]: waiting for transforms to catch up with the stopped base before deprojecting[0m
+[mission_node-4] [0m[INFO] [1789241414.884989199] [rafeeq_mission]: perception: bin:searching:no_depth[0m
+[navigation_node-2] [0m[INFO] [1789241419.759989214] [rafeeq_navigation]: reached world (-0.298, -0.089), 0.057 m along and 0.034 m across the heading, 0.8 deg of residual error[0m
+[mission_node-4] [0m[INFO] [1789241420.009523309] [rafeeq_mission]: [STATE] RELEASE  (t+105.5 s)[0m
+[perception_node-1] [0m[INFO] [1789241420.075263647] [rafeeq_perception]: waiting for transforms to catch up with the stopped base before deprojecting[0m
+[mission_node-4] [0m[INFO] [1789241420.076323705] [rafeeq_mission]: perception: bin:searching:no_depth[0m
+[perception_node-1] [0m[INFO] [1789241420.076889917] [rafeeq_perception]: mode -> idle[0m
+[manipulation_node-3] [0m[INFO] [1789241424.040261664] [rafeeq_manipulation]: release [13] done: released=yes[0m
+[mission_node-4] [0m[INFO] [1789241424.259423163] [rafeeq_mission]: [STATE] CONFIRM_DELIVERY  (t+107.7 s)[0m
+[mission_node-4] [31m[ERROR] [1789241457.937051609] [rafeeq_mission]: MISSION FAILED in CONFIRM_DELIVERY: the gripper opened over the bin but nothing ever contacted it on /bin_contacts - the book did not reach the bin[0m
+[mission_node-4] [0m[INFO] [1789241457.937628361] [rafeeq_mission]: [STATE] FAILED  (t+127.9 s)[0m
+[mission_node-4] [0m[INFO] [1789241457.938636941] [rafeeq_mission]: trial record -> /opt/erc_ws/src/results/trial_V01_seed101_col2_red.json[0m
+[mission_node-4] [0m[INFO] [1789241457.938939485] [rafeeq_mission]: 
+[mission_node-4] ================================================================
+[mission_node-4] RAFEEQ PRACTICE SCORE ESTIMATE (not an official result)
+[mission_node-4] ================================================================
+[mission_node-4] stage                                        awarded available
+[mission_node-4] column topic                                     1.0       1.0
+[mission_node-4] column image                                     2.0       2.0
+[mission_node-4] navigate shelf                                   3.0       3.0
+[mission_node-4] row topic                                        1.0       1.0
+[mission_node-4] row image                                        2.0       2.0
+[mission_node-4] grasp                                            3.0       3.0
+[mission_node-4] return with book                                   -       3.0
+[mission_node-4] placement (none)                                 0.02.0 or 4.0
+[mission_node-4] ----------------------------------------------------------------
+[mission_node-4] gross                                           12.0
+[mission_node-4] collision penalty (1 event(s))                  -0.5
+[mission_node-4] ESTIMATED TOTAL                                 11.5   (max 19 / 17 with a drop)
+[mission_node-4] ================================================================[0m
+[mission_node-4] [31m[ERROR] [1789241457.939252662] [rafeeq_mission]: 
+[mission_node-4] ==================================================================
+[mission_node-4] RUN V01_seed101_col2_red FAILED after 127.9 s: the gripper opened over the bin but nothing ever contacted it on /bin_contacts - the book did not reach the bin
+[mission_node-4] ==================================================================[0m

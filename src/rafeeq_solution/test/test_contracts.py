@@ -1154,3 +1154,23 @@ def test_the_evidence_images_land_in_the_repository_after_a_clean_build():
         assert in_place == os.path.realpath(repo)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_repeated_command_is_not_treated_as_a_conflict():
+    """The same command delivered twice is the same command.
+
+    The mission publishes manipulation commands on a latched topic. A
+    subscriber that matches while the first message is still in flight gets it
+    again, and the second copy used to be answered with a failure - which the
+    mission treats as fatal. One validation run died 1.8 s in, in HOME,
+    reporting "busy with home", having done nothing wrong.
+    """
+    src = open(os.path.join(PKG, 'rafeeq_solution', 'manipulation_node.py'),
+               encoding='utf-8').read()
+    handler = src.split('    def on_command(')[1].split('\n    def ')[0]
+    busy = handler.split('if self.job:')[1]
+    guard = busy.split('rejecting')[0]
+    assert 'seq == self.job_seq' in guard and 'verb == self.job_verb' in guard, (
+        'a repeat of the running command is still answered with a failure')
+    # And the repeat must return without touching the running job.
+    assert 'return' in guard

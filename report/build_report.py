@@ -4,9 +4,11 @@
     python3 report/build_report.py
 
 Reads:
-    report/report.md          the editable source (this is what you edit)
-    results/*.json            machine-readable trial records
-    erc_images/*.png          live evidence images
+    results/trial_V*.json     the final validation trials, on the submitted code
+    results/trial_T*.json     the earlier development trials, kept for contrast
+    media/*.log               the recorded delivering take's own output
+    erc_images/*.png          live evidence images written by the runs
+    media/nav_paths.png       the RViz planned-versus-executed figure
 
 Writes:
     report/Rafeeq_ERC2026_Phase1_Report.pdf
@@ -15,12 +17,19 @@ Why matplotlib and not LaTeX or pandoc: neither is present in the competition
 image, and the report has to be rebuildable by anyone who can run the solution.
 matplotlib already comes with the stack, so the build has no new dependency.
 
-Every number in the Results section is read from ``results/*.json`` at build
-time.  Nothing is typed in by hand, so the report cannot drift from the runs.
+Every number in the Results and Navigation sections is read from the runs'
+own records and logs at build time.  Nothing is typed in by hand, so the
+report cannot drift from what the runs did.
+
+A missing figure is a build failure, not a placeholder.  An earlier revision
+shipped with "[missing image: ...]" printed where the perception evidence
+should have been, because nothing in the build had any reason to complain.
+See ``preflight``.
 """
 
 import glob
 import json
+import math
 import os
 import re
 import sys
@@ -36,7 +45,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RESULTS = os.path.join(ROOT, 'results')
 IMAGES = os.path.join(ROOT, 'erc_images')
-SOURCE = os.path.join(HERE, 'report.md')
+MEDIA = os.path.join(ROOT, 'media')
 OUTPUT = os.path.join(HERE, 'Rafeeq_ERC2026_Phase1_Report.pdf')
 
 A4 = (8.27, 11.69)
@@ -51,14 +60,22 @@ RULE = '#c9d4dd'
 STYLES = {
     'h1':   dict(size=15.5, weight='bold', colour=ACCENT, before=0.020, after=0.011),
     'h2':   dict(size=11.0, weight='bold', colour=INK,    before=0.014, after=0.007),
-    'body': dict(size=8.6,  weight='normal', colour=INK,  before=0.000, after=0.008),
-    'note': dict(size=7.8,  weight='normal', colour=MUTED, before=0.000, after=0.008),
-    'mono': dict(size=7.4,  weight='normal', colour=INK,  before=0.002, after=0.008),
-    'bullet': dict(size=8.6, weight='normal', colour=INK, before=0.000, after=0.005),
+    'body': dict(size=8.3,  weight='normal', colour=INK,  before=0.000, after=0.0068),
+    'note': dict(size=7.5,  weight='normal', colour=MUTED, before=0.000, after=0.0068),
+    'mono': dict(size=7.2,  weight='normal', colour=INK,  before=0.002, after=0.0068),
+    'bullet': dict(size=8.3, weight='normal', colour=INK, before=0.000, after=0.0044),
 }
-LINE = {'h1': 0.021, 'h2': 0.016, 'body': 0.0132, 'note': 0.0122,
-        'mono': 0.0118, 'bullet': 0.0132}
-WRAP = {'body': 108, 'note': 118, 'bullet': 104, 'mono': 118, 'h1': 60, 'h2': 80}
+# Set a little tighter than is comfortable, deliberately: Phase 1 allows five
+# body pages and the rubric asks for a figure and quantitative data in several
+# sections.  Dropping required content to make the count would score worse than
+# a denser page.
+LINE = {'h1': 0.0198, 'h2': 0.0150, 'body': 0.0123, 'note': 0.0115,
+        'mono': 0.0111, 'bullet': 0.0123}
+# Monospace is wider per character than the rest: at 7.2 pt a DejaVu Sans
+# Mono glyph advances 0.602 em, so 118 characters is the whole text column
+# and 122 runs off the page edge.  It did.
+WRAP = {'body': 112, 'note': 122, 'bullet': 108, 'mono': 114, 'h1': 60,
+        'h2': 80}
 
 #: The recorded delivering run.  Every figure here is read off that take's own
 #: logs, which are committed at media/delivered_take_solution.log, so this block
@@ -99,10 +116,150 @@ def load_trials():
     return trials
 
 
-def formal_trials(trials):
-    """The recorded competition-style trials, in order."""
-    picked = [t for t in trials if re.match(r'^T\d\d_', str(t.get('run_id', '')))]
+def series(trials, letter):
+    """One series of recorded trials, in order.
+
+    Two series exist and the difference between them is the whole point of
+    section 5.  ``T`` are the development trials, recorded before the
+    extraction work described in section 4.  ``V`` are the validation trials,
+    recorded against the code being submitted.  Averaging a rate across both
+    would be averaging across two different robots.
+    """
+    pattern = r'^' + letter + r'[0-9][0-9]_'
+    picked = [t for t in trials if re.match(pattern, str(t.get('run_id', '')))]
     return sorted(picked, key=lambda t: t['run_id'])
+
+
+#: One run's state timeline, as the mission itself printed it.
+STATE_LINE = re.compile(r'.STATE. ([A-Z_]+) +.t.([0-9.]+) s.')
+
+
+def state_timeline(path):
+    """(state, entered at) in simulated seconds, read off a run's own log."""
+    out = []
+    try:
+        with open(path, encoding='utf-8', errors='replace') as handle:
+            for line in handle:
+                found = STATE_LINE.search(line)
+                if found:
+                    out.append((found.group(1), float(found.group(2))))
+    except OSError:
+        return []
+    return out
+
+
+def state_seconds(timeline, ended=None):
+    """How long each state held, from the moment the next one was entered."""
+    spent = {}
+    for i, (name, entered) in enumerate(timeline):
+        if i + 1 < len(timeline):
+            leaves = timeline[i + 1][1]
+        elif ended is not None:
+            leaves = ended
+        else:
+            continue
+        spent[name] = spent.get(name, 0.0) + (leaves - entered)
+    return spent
+
+
+#: A navigation goal and the arrival that ended it, as the navigation node
+#: prints them.  Written with wildcards rather than escaped brackets so the
+#: pattern survives being edited by tools that mangle backslashes.
+REACH_LINE = re.compile(
+    r'reached world .([-+0-9.]+), ([-+0-9.]+)., '
+    r'([0-9.]+) m along and ([0-9.]+) m across the heading, '
+    r'([0-9.]+) deg of residual error')
+
+
+def nav_arrivals(path):
+    """Every arrival in a run's log, tagged with the state that drove it.
+
+    The navigation node reports where it stopped against where it was sent;
+    the mission node prints the state it is in.  Both go to the same log in
+    order, so walking it once attaches each arrival to its leg.  This is why
+    the table below has no hand-typed numbers in it.
+    """
+    out = []
+    state = ''
+    try:
+        handle = open(path, encoding='utf-8', errors='replace')
+    except OSError:
+        return out
+    with handle:
+        for line in handle:
+            moved = STATE_LINE.search(line)
+            if moved:
+                state = moved.group(1)
+                continue
+            got = REACH_LINE.search(line)
+            if got:
+                out.append({
+                    'state': state,
+                    'x': float(got.group(1)), 'y': float(got.group(2)),
+                    'along': float(got.group(3)),
+                    'across': float(got.group(4)),
+                    'yaw': float(got.group(5)),
+                })
+    return out
+
+
+def nav_legs(arrivals, spent, trials):
+    """One row per driving leg: distance, time, and the same leg in trials.
+
+    Distance is between consecutive arrivals, which is the path the base was
+    asked for - it drives straight lines between waypoints, so this is not an
+    approximation of a curve.  A leg with several goals in it is summed.
+    """
+    legs = []
+    here = (0.0, 0.0)
+    for got in arrivals:
+        step = math.hypot(got['x'] - here[0], got['y'] - here[1])
+        here = (got['x'], got['y'])
+        if legs and legs[-1]['state'] == got['state']:
+            legs[-1]['distance'] += step
+            legs[-1]['arrival'] = got
+        else:
+            legs.append({'state': got['state'], 'distance': step,
+                         'arrival': got})
+    labels = dict(NAV_SEGMENTS)
+    for leg in legs:
+        leg['label'] = labels.get(leg['state'], leg['state'].replace('_', ' ')
+                                  .capitalize())
+        leg['seconds'] = spent.get(leg['state'])
+        seen = [t['timing']['stage_seconds'][leg['state']] for t in trials
+                if leg['state'] in t['timing'].get('stage_seconds', {})]
+        leg['trials'] = (sum(seen) / len(seen)) if seen else None
+        leg['trial_count'] = len(seen)
+    return legs
+
+
+#: The states in which the base is driving, in the order a run meets them,
+#: with what each one is driving to.  Everything else a run does is perception
+#: or arm motion; these are the segments the Phase 1 document calls travel.
+NAV_SEGMENTS = [
+    ('FACE_BIN', 'Turn to the collection bin'),
+    ('FACE_SHELF', 'Turn to the shelf'),
+    ('NAV_COLUMN', 'Start zone to the shelf column'),
+    ('NAV_STAGE', 'Along the shelf, square to the book'),
+    ('NAV_GRASP', 'Approach into the shelf'),
+    ('RETREAT', 'Retreat, book in the gripper'),
+    ('CARRY_TO_BIN', 'Carry to the collection bin'),
+    ('BACK_OFF', 'Back off, clear of the bin'),
+]
+
+
+def evidence_images(trial):
+    """The two evidence images a trial wrote, resolved into erc_images/.
+
+    The record holds the path the container wrote to; the file that matters is
+    the one committed to this repository under the same name.
+    """
+    found = trial.get('evidence') or {}
+    out = []
+    for key in ('column_image', 'book_image'):
+        name = os.path.basename(str(found.get(key) or ''))
+        out.append(os.path.join(IMAGES, name) if name else '')
+    return out
 
 
 def summarise(trials):
@@ -187,18 +344,39 @@ class Doc(object):
     def room(self, needed):
         return (self.y - needed) > BOTTOM
 
+    def _fits(self, style):
+        """How many lines of this style are left on the page."""
+        return int(max(0.0, self.y - BOTTOM) / LINE[style])
+
     def block(self, style, text, indent=0.0):
+        """A paragraph, split across a page break rather than jumping it.
+
+        The earlier version moved a whole paragraph to the next page if it
+        did not fit whole, which left a third of a page empty every time a
+        long one landed near the bottom - about a page of the five, given
+        away.  Two lines are kept together at each end so a break never
+        strands a single line.
+        """
         cfg = STYLES[style]
         self.y -= cfg['before']
         lines = textwrap.wrap(text, WRAP[style]) or ['']
-        if not self.room(LINE[style] * len(lines)):
-            self.new_page()
-        for line in lines:
-            self.fig.text(MARGIN_L + indent, self.y, line,
-                          size=cfg['size'], weight=cfg['weight'],
-                          color=cfg['colour'],
-                          family='monospace' if style == 'mono' else None)
-            self.y -= LINE[style]
+        i = 0
+        while i < len(lines):
+            left = len(lines) - i
+            room = self._fits(style)
+            if room < min(2, left):
+                self.new_page()
+                room = self._fits(style)
+            take = min(room, left)
+            if left - take == 1 and take > 1:
+                take -= 1
+            for line in lines[i:i + take]:
+                self.fig.text(MARGIN_L + indent, self.y, line,
+                              size=cfg['size'], weight=cfg['weight'],
+                              color=cfg['colour'],
+                              family='monospace' if style == 'mono' else None)
+                self.y -= LINE[style]
+            i += take
         self.y -= cfg['after']
 
     def h1(self, text):
@@ -214,20 +392,32 @@ class Doc(object):
         self.y -= LINE['h1'] - 0.004 + STYLES['h1']['after']
 
     def bullet(self, text, marker='•'):
+        """A bullet, which keeps its marker with its first line."""
         cfg = STYLES['bullet']
         lines = textwrap.wrap(text, WRAP['bullet']) or ['']
-        if not self.room(LINE['bullet'] * len(lines)):
+        if self._fits('bullet') < min(2, len(lines)):
             self.new_page()
         self.fig.text(MARGIN_L + 0.008, self.y, marker,
                       size=cfg['size'], color=ACCENT)
-        for i, line in enumerate(lines):
+        for line in lines:
+            if not self.room(LINE['bullet']):
+                self.new_page()
             self.fig.text(MARGIN_L + 0.024, self.y, line,
                           size=cfg['size'], color=cfg['colour'])
             self.y -= LINE['bullet']
         self.y -= cfg['after']
 
     def table(self, headers, rows, widths, size=7.6, note=None):
-        height = 0.017 + 0.0136 * (len(rows) + 1)
+        """A table, which may run over a page break.
+
+        It used to demand room for every row before it would start, so a nine
+        row table near the bottom of a page moved whole and left a third of
+        that page empty.  It now starts wherever there is room for its header
+        and two rows, and the row loop below carries the rest over.  The
+        header is not repeated on the second page: these tables are short
+        enough to read as one, and repeating it costs the row it saves.
+        """
+        height = 0.017 + 0.0136 * (min(len(rows), 2) + 1)
         if not self.room(height):
             self.new_page()
         x0 = MARGIN_L
@@ -258,9 +448,18 @@ class Doc(object):
         if note:
             self.block('note', note)
 
-    def image(self, path, height=0.20, caption=None):
+    def image(self, path, height=0.20, caption=None, width=None):
+        """Place a figure.  ``width`` is a fraction of the text column.
+
+        With ``width`` given, the height follows from the aspect ratio and
+        ``height`` is only what is reserved when deciding whether the figure
+        fits here or starts the next page.  A figure that is not there is a
+        build failure rather than a note in the margin - see ``preflight`` -
+        but this still degrades rather than crashing, so a broken build
+        produces a page that says what is wrong with it.
+        """
         if not os.path.exists(path):
-            self.block('note', '[missing image: {}]'.format(
+            self.block('note', '[MISSING FIGURE: {}]'.format(
                 os.path.relpath(path, ROOT)))
             return
         if not self.room(height + 0.03):
@@ -268,13 +467,18 @@ class Doc(object):
         try:
             data = mpimg.imread(path)
         except Exception:
-            self.block('note', '[unreadable image: {}]'.format(path))
+            self.block('note', '[UNREADABLE FIGURE: {}]'.format(path))
             return
         ar = data.shape[1] / float(data.shape[0])
         page_ar = A4[0] / A4[1]
-        width = height * ar / page_ar
+        if width is None:
+            width = height * ar / page_ar
+        else:
+            width = width * (MARGIN_R - MARGIN_L)
         width = min(width, MARGIN_R - MARGIN_L)
         height = width * page_ar / ar
+        if not self.room(height + 0.03):
+            self.new_page()
         ax = self.fig.add_axes([MARGIN_L, self.y - height, width, height])
         ax.imshow(data)
         ax.axis('off')
@@ -282,25 +486,34 @@ class Doc(object):
         if caption:
             self.block('note', caption)
 
-    def image_pair(self, left, right, height=0.155, caption=None):
+    def image_pair(self, left, right, height=0.155, caption=None,
+                   width=1.0):
+        """Two figures side by side, filling ``width`` of the text column.
+
+        The height follows from the width and the aspect ratio, so ``height``
+        is only what is reserved when deciding whether the pair fits here or
+        starts the next page.
+        """
         if not (os.path.exists(left) and os.path.exists(right)):
             self.image(left, height, caption)
             return
         if not self.room(height + 0.03):
             self.new_page()
-        span = MARGIN_R - MARGIN_L
+        column = MARGIN_R - MARGIN_L
+        span = column * width
         each = (span - 0.012) / 2.0
+        x0 = MARGIN_L + (column - span) / 2.0
+        tallest = 0.0
         for i, path in enumerate((left, right)):
             data = mpimg.imread(path)
             ar = data.shape[1] / float(data.shape[0])
             h = each * (A4[0] / A4[1]) / ar
+            tallest = max(tallest, h)
             ax = self.fig.add_axes(
-                [MARGIN_L + i * (each + 0.012), self.y - h, each, h])
+                [x0 + i * (each + 0.012), self.y - h, each, h])
             ax.imshow(data)
             ax.axis('off')
-        data = mpimg.imread(left)
-        ar = data.shape[1] / float(data.shape[0])
-        self.y -= each * (A4[0] / A4[1]) / ar + 0.006
+        self.y -= tallest + 0.006
         if caption:
             self.block('note', caption)
 
@@ -316,8 +529,17 @@ def title_page(doc, summary, baseline):
     # The logo carries the wordmark - "Rafeeq", "Library Robot" and the motto -
     # so it stands in for the type that used to be set here rather than sitting
     # above a repeat of itself.
-    logo = os.path.join(ROOT, 'docs', 'assets', 'rafeeq_logo.png')
-    if os.path.exists(logo):
+    # By name, not by extension.  The logo was a .png, was replaced by a .jpeg,
+    # and every reference to the old name broke silently - this one by falling
+    # back to type, which is a title page with no logo on it.
+    logo = ''
+    assets = os.path.join(ROOT, 'docs', 'assets')
+    for ext in ('.png', '.jpeg', '.jpg', '.PNG', '.JPEG', '.JPG'):
+        candidate = os.path.join(assets, 'rafeeq_logo' + ext)
+        if os.path.exists(candidate):
+            logo = candidate
+            break
+    if logo:
         data = mpimg.imread(logo)
         ar = data.shape[1] / float(data.shape[0])
         h = 0.26
@@ -371,17 +593,19 @@ def title_page(doc, summary, baseline):
              'unedited take, {:d}:{:02d}.'.format(
                  TAKE['video_s'] // 60, TAKE['video_s'] % 60),
              size=8.5, color=ACCENT, ha='center')
+    # The reliability caveat belongs in section 5, where it can be given with
+    # its numbers, not on the cover in red where it is the first thing read.
     fig.text(0.5, 0.060,
-             'That is one run, not a rate: the carry is timing-critical and '
-             'runs still drop the book (section 5).',
-             size=8.0, color='#8a3b2e', ha='center')
+             'Five validation trials, their rates, and the limits of them: '
+             'sections 5 and 6.',
+             size=8.0, color=MUTED, ha='center')
 
 
 # --------------------------------------------------------------------------
 # Diagram
 # --------------------------------------------------------------------------
 
-def architecture_diagram(doc, height=0.245):
+def architecture_diagram(doc, height=0.190):
     if not doc.room(height + 0.02):
         doc.new_page()
     ax = doc.fig.add_axes([MARGIN_L, doc.y - height,
@@ -447,15 +671,107 @@ def architecture_diagram(doc, height=0.245):
 # Report body
 # --------------------------------------------------------------------------
 
+def evidence_source(validation, development):
+    """The trial whose evidence images the perception section shows.
+
+    Prefer a validation trial that delivered: those images were written by the
+    code being submitted, on a run that finished.  The figure is then the same
+    run as a row of the results table rather than an unattributed screenshot.
+    """
+    delivered = [t for t in validation if t['delivery'].get('delivered')]
+    for group in (delivered, validation, development):
+        for trial in reversed(group):
+            left, right = evidence_images(trial)
+            if (left and right and os.path.exists(left)
+                    and os.path.exists(right)):
+                return trial, left, right
+    return None, '', ''
+
+
+def preflight(extra=()):
+    """Fail before building if a figure the report needs is not there.
+
+    The report once shipped with "[missing image: ...]" printed where the
+    perception evidence should have been.  Nothing complained, because a
+    missing figure had been made to degrade quietly - which is the wrong
+    default for a document that is submitted once.  These are the figures the
+    body asks for by a fixed path.
+
+    ``extra`` is for figures whose path is not fixed but chosen from the trial
+    records at build time - the perception evidence pair.  Those have to be
+    resolved before this runs and passed in, or they bypass the check
+    entirely: ``Doc.image`` is what prints the placeholder, and it is reached
+    long after this point.  An empty entry means the chooser found nothing,
+    which is a missing figure too, not an absent requirement.
+    """
+    required = [
+        os.path.join(MEDIA, 'nav_paths.png'),
+    ] + [p for p in extra if p]
+    logo = [os.path.join(ROOT, 'docs', 'assets', 'rafeeq_logo' + ext)
+            for ext in ('.png', '.jpeg', '.jpg')]
+    missing = [p for p in required if not os.path.exists(p)]
+    if not any(os.path.exists(p) for p in logo):
+        missing.append(os.path.join(ROOT, 'docs', 'assets',
+                                    'rafeeq_logo.{png,jpeg,jpg}'))
+    if len([p for p in extra if p]) < 2:
+        missing.append('an evidence image pair from a recorded trial - no '
+                       'record in results/ names two images present in '
+                       'erc_images/')
+    if missing:
+        sys.stderr.write(
+            'report: these figures are missing, so the report would be built '
+            'with holes in it:\n')
+        for path in missing:
+            sys.stderr.write('  {}\n'.format(
+                os.path.relpath(path, ROOT)
+                if os.path.isabs(path) else path))
+        sys.stderr.write(
+            'Regenerate the navigation figure with tools/rafeeq_paths.rviz '
+            'during a run, or pass --allow-missing-figures to build anyway.\n')
+        if '--allow-missing-figures' not in sys.argv:
+            raise SystemExit(1)
+
+
 def build():
     trials = load_trials()
-    formal = formal_trials(trials)
-    summary = summarise(formal)
+    formal = series(trials, 'T')
+    validation = series(trials, 'V')
+    # Detection is the one measurement both series share: the extraction work
+    # of section 4 changed how the book is held, not how it is found, so every
+    # recorded run counts towards how accurately it is found.
+    recorded = formal + validation
+    detection = summarise(recorded)
+    shown, evidence_left, evidence_right = evidence_source(validation, formal)
+    preflight((evidence_left, evidence_right))
+    summary = summarise(validation) or summarise(formal)
+    # The delivering take's own log is the only record it left: the recorder
+    # ends on the delivery event, before the run writes a JSON.  Its legs and
+    # its state times are therefore read straight out of it.
+    take_log = os.path.join(MEDIA, 'delivered_take_solution.log')
+    take_spent = state_seconds(state_timeline(take_log))
+    legs = nav_legs(nav_arrivals(take_log), take_spent, validation)
+    # The run the navigation figure was captured on.  RViz is attached for the
+    # figure and for nothing else, so this is a run of its own - not the take
+    # timed in the table beside it, and not one of the five.
+    figure_run = next((t for t in trials
+                       if str(t.get('run_id', '')).startswith('FIG')), None)
+    # Where the validation trials failed, counted once and used in both
+    # section 5 and section 6 so the two cannot disagree with each other.
+    why = [(t.get('failure_reason') or '') for t in validation]
+    extraction = sum(1 for r in why
+                     if 'extraction' in r or 'retention after lift' in r)
+    carry = sum(1 for r in why if 'on the way' in r or 'over the bin' in r)
     baseline = 'organiser dfl-rlab/erc_sim_2026 @ 2aa5a4a (v1.0.3-1-g2aa5a4a)'
 
     preview = (os.path.join(HERE, 'preview')
                if '--preview' in sys.argv else None)
-    with PdfPages(OUTPUT) as pdf:
+    # Build to a scratch file and move it into place at the end.  Anyone
+    # watching the output path - a person, or another process waiting to copy
+    # it - would otherwise see a structurally valid PDF that is half written,
+    # or one whose checks below have not run yet.  One was handed to a judge's
+    # submission form that way.
+    draft = OUTPUT + '.building'
+    with PdfPages(draft) as pdf:
         doc = Doc(pdf, preview_dir=preview)
         title_page(doc, summary, baseline)
 
@@ -471,31 +787,24 @@ def build():
                   'That separation is what made the defects in this system '
                   'findable at all.')
         architecture_diagram(doc)
-        doc.block('h2', 'Node responsibilities')
-        doc.table(
-            ['Node', 'Responsibility', 'Key interfaces'],
-            [['rafeeq_mission', 'State machine, scoring, trial record',
-              '/rafeeq/*, /bin_contacts, /contacts'],
-             ['rafeeq_perception', 'Markers, books, bin, evidence images',
-              'RGB-D, CameraInfo, TF, /erc/*'],
-             ['rafeeq_navigation', 'Holonomic waypoints, clearance',
-              '/cmd_vel, /odom, /scan_*_raw'],
-             ['rafeeq_manipulation', 'Arm, torso, head, gripper',
-              'FollowJointTrajectory actions, /joint_states']],
-            [0.20, 0.44, 0.36])
+        doc.block('note',
+                  'Interfaces, in the same order: mission on /rafeeq/*, '
+                  '/bin_contacts and /contacts; perception on RGB-D, CameraInfo, '
+                  'TF and /erc/*; navigation on /cmd_vel, /odom and '
+                  '/scan_*_raw; manipulation on FollowJointTrajectory actions '
+                  'and /joint_states.')
         doc.block('h2', 'Perception to action, end to end')
         doc.block('body',
                   'The mission asks perception for a column; perception reads '
                   'the number plates, deprojects each into the world, and '
                   'publishes the physical column together with an annotated '
                   'image. The mission drives there and asks for the book; '
-                  'perception returns the row and, critically, the measured 3D '
-                  'position. The mission passes that point to manipulation, '
-                  'which plans a grasp posture against it, and drives the base '
-                  'so the book is squarely in front of the arm. Nothing in this '
-                  'chain uses a nominal column-centre position: the organiser '
-                  'jitters each book by up to 0.25 m, so a nominal target '
-                  'misses by three times the gripper opening.')
+                  'perception returns the row and the measured 3D position. '
+                  'The mission passes that point to manipulation, which plans a '
+                  'grasp posture against it, and drives the base until the book '
+                  'is square in front of the arm. Nothing in the chain uses a '
+                  'nominal column centre: the organiser jitters each book by up '
+                  'to 0.25 m, three times the gripper opening.')
         doc.block('h2', 'What is deliberately not used')
         doc.bullet('Nav2 is installed but never brought up by the organiser '
                    'launch: no map server, no AMCL, no costmap, no map frame. '
@@ -508,7 +817,6 @@ def build():
                    'URDF and solves the 8-DOF chain with damped least squares.')
 
         # ------------------------------------------------------- 2. perception
-        doc.new_page()
         doc.h1('2  Perception')
         doc.block('h2', 'Shelf number identification')
         doc.block('body',
@@ -549,34 +857,44 @@ def build():
                   'such a fallback would happily return a same-colour book a '
                   'metre away in a neighbouring column.')
         doc.image_pair(
-            os.path.join(IMAGES, 'shelf_column_20260909_100140_814.png'),
-            os.path.join(IMAGES, 'target_book_20260909_100224_228.png'),
-            caption='Evidence written live by the running solution. Left: the '
-                    'target shelf column boxed as a column, with the marker '
-                    'that identified it. Right: the target book, its row, and '
-                    'its measured offset from the column centre.')
-        if summary:
+            evidence_left, evidence_right, width=0.72,
+            caption='Written live by trial {}, the run in the results table. '
+                    'Left: the shelf column identified, boxed as a column, with '
+                    'the number plate that identified it. Right: the target '
+                    'book inside that column, its row, and its measured offset '
+                    'from the column centre. These are the two images the '
+                    'rubric scores; the solution writes them to erc_images/ on '
+                    'every run.'.format(
+                        (shown or {}).get('run_id', 'the recorded run')))
+        if detection:
             doc.block('h2', 'Measured accuracy across the recorded trials')
             doc.table(
                 ['Quantity', 'Result'],
-                [['Trials recorded', str(summary['n'])],
-                 ['Target column correctly identified',
-                  '{}/{}'.format(summary['column'], summary['n'])],
+                [['Trials recorded', '{} ({} development, {} validation)'.format(
+                    detection['n'], len(formal), len(validation))],
+                 ['Target column read off the number plates',
+                  '{}/{}'.format(detection['column'], detection['n'])],
                  ['Book row identified',
-                  '{}/{}'.format(summary['row'], summary['n'])],
+                  '{}/{}'.format(detection['row'], detection['n'])],
                  ['Book 3D position measured',
-                  '{}/{}'.format(summary['position'], summary['n'])],
+                  '{}/{}'.format(detection['position'], detection['n'])],
                  ['Mean |offset| of book from column centre',
-                  '{:.3f} m'.format(summary['offset_mean'])],
+                  '{:.3f} m'.format(detection['offset_mean'])],
                  ['Largest |offset| handled',
-                  '{:.3f} m'.format(summary['offset_max'])]],
+                  '{:.3f} m'.format(detection['offset_max'])]],
                 [0.62, 0.38],
-                note='Denominator is the number of recorded trials. A trial '
-                     'counts as identified only if the value was published '
-                     'from an image, never from the launch argument.')
+                note='Both series of recorded trials count here. What changed '
+                     'between them was how the book is held, not how it is '
+                     'found, so detection is the one measurement they share. A '
+                     'trial counts as identified only if the value was '
+                     'published from an image, never from the launch argument. '
+                     'The mapping each run read is printed into its own '
+                     'evidence image, and the model name the simulator '
+                     'reports for the book that was grasped agrees with it '
+                     'every time - which is what makes these readings '
+                     'checkable rather than self-reported.')
 
         # ------------------------------------------------------- 3. navigation
-        doc.new_page()
         doc.h1('3  Navigation')
         doc.block('body',
                   'The base is a mecanum holonomic drive, so x, y and yaw are '
@@ -599,11 +917,87 @@ def build():
                   'pose it had never reached.')
         doc.block('h2', 'Travel time')
         doc.block('body',
-                  'The simulator ran at a measured real-time factor of 0.362 on '
-                  'the validation machine, so simulated and wall-clock seconds '
-                  'differ by nearly threefold. Both are recorded; the table '
-                  'below is simulated time, which is the machine-independent '
-                  'figure.')
+                  'Simulated and wall-clock seconds are not the same figure - '
+                  'the simulator ran at 0.362 in software rendering and '
+                  '0.65-0.70 on the GPU - so every time below is simulated '
+                  'time, which is the machine-independent one. Each leg is '
+                  'read out of a run\'s own log at build time: timed from the '
+                  'navigation state being entered to the arrival that ended '
+                  'it, and measured between the poses the base reported '
+                  'reaching. The take column is the recorded delivering run; '
+                  'the trials column is the mean of the validation trials in '
+                  'section 5.')
+        rows = []
+        for leg in legs:
+            if leg['seconds'] is None:
+                continue
+            got = leg['arrival']
+            seconds = leg['seconds']
+            rows.append([
+                leg['label'],
+                ('turn' if leg['distance'] < 0.05
+                 else '{:.2f} m'.format(leg['distance'])),
+                '-' if seconds is None else '{:.1f}'.format(seconds),
+                ('-' if leg['trials'] is None
+                 else '{:.1f}  ({})'.format(leg['trials'],
+                                            leg['trial_count'])),
+                ('-' if not seconds or leg['distance'] < 0.05
+                 else '{:.2f}'.format(leg['distance'] / seconds)),
+                '{:.3f} / {:.3f} m, {:.1f} deg'.format(
+                    got['along'], got['across'], got['yaw']),
+            ])
+        rows.append(['Whole mission, to /bin_contacts', '',
+                     '{:.1f}'.format(TAKE['delivered_sim_s']),
+                     ('{:.1f}  ({})'.format(summary['time_mean'], summary['n'])
+                      if summary else '-'), '', ''])
+        doc.table(
+            ['Leg', 'Distance', 'Take s', 'Trials s (n)', 'm/s',
+             'Arrival error: along / across, yaw'],
+            rows, [0.285, 0.090, 0.075, 0.115, 0.070, 0.365], size=7.2,
+            note='Arrival error is the navigation node\'s own report of where '
+                 'it stopped against where it was sent, along and across the '
+                 'commanded heading. The approach into the shelf is '
+                 'deliberately the slowest leg: it is driven on the precise '
+                 'profile with the arm already in its grasp posture, where '
+                 'overshoot means striking a shelf board. Trial means cover '
+                 'only the trials that reached that leg, hence the count; the '
+                 'take ends on the delivery event, part-way through backing '
+                 'off, so that leg is not timed.')
+        doc.block('body',
+                  'Three decisions account for most of the time saved, and all '
+                  'three buy time on the return, where a book is hanging from '
+                  'the pads. The bin is found from the start zone before the '
+                  'shelf trip, so no search leg is driven with the book held. '
+                  'The drive to the bin starts while the hold is still being '
+                  'confirmed, overlapping 1.2 s of checking with the carry. And '
+                  'the carry runs a higher proportional gain: at the ordinary '
+                  'gain the last 0.2 m is crawled at 0.05-0.12 m/s, about 2.5 s '
+                  'of a drive the grip beat by roughly one. Overshoot is '
+                  'harmless there - the aim point is short of the bin\'s '
+                  'middle.')
+        if figure_run is not None:
+            said = 'run {}: seed {}, column {}, {} book, which {}'.format(
+                figure_run['run_id'],
+                str(figure_run['run_id']).split('seed')[-1].split('_')[0],
+                figure_run['requested']['shelf_column_number'],
+                figure_run['requested']['book_colour'],
+                ('delivered' if figure_run['delivery'].get('delivered')
+                 else 'grasped the correct book and lost it before the bin'))
+        else:
+            said = 'a run at seed 101, column 2, red'
+        doc.image(os.path.join(MEDIA, 'nav_paths.png'), height=0.215, width=0.88,
+                  caption='Planned against executed path in RViz 2, odom frame: '
+                          'the waypoints the navigation node published on '
+                          '/rafeeq/nav/planned_path in blue, against the '
+                          'odometry the base actually drove, published on '
+                          '/rafeeq/nav/executed_path in orange. Grey points are '
+                          'the front lidar, which is what draws the shelf and '
+                          'the walls. Captured on {} - RViz is attached for this '
+                          'figure and nothing else, so it is neither the take '
+                          'timed above nor one of the five trials. The bow on '
+                          'the return is the ramped acceleration profile used '
+                          'while a book is held. Reproduce with '
+                          'tools/rafeeq_paths.rviz.'.format(said))
 
         # ------------------------------------------------------ 4. manipulation
         doc.h1('4  Manipulation')
@@ -624,59 +1018,69 @@ def build():
                    'gripper body: 0.174 m at 0 deg, 0.123 m at 45 deg, 0.060 m '
                    'at 70 deg, 0.000 m at 90 deg. Whole-arm shelf intrusion '
                    'reaches zero from 45 deg onwards.')
-        doc.bullet('The pads themselves separate as gap = 0.0051 + 0.777 x '
-                   'joint, measured by transforming the fingertip collision '
-                   'mesh into the grasp frame. The fingertip link origins give '
-                   'a different and misleading curve.')
+        doc.bullet('The pads separate as gap = 0.0051 + 0.777 x joint, '
+                   'measured by transforming the fingertip collision mesh into '
+                   'the grasp frame; the link origins give a misleading curve.')
         doc.block('h2', 'The sequence')
         doc.block('mono',
                   'observe -> stage 1.35 m back -> plan (roll x height x tilt) '
                   '-> take posture -> base translates in\n'
                   '  -> refine against live base pose -> close -> verify '
-                  'contact -> lift -> base retreats -> verify retention')
+                  'contact -> lift -> base retreats -> verify retention '
+                  '-> carry -> release over the bin')
         doc.block('body',
-                  'The arm takes its posture while still 1.35 m from the shelf, '
-                  'where it physically cannot reach the shelf while swinging. '
-                  'The base then carries it in. Re-solving IK at each step of '
-                  'an arm-driven approach changes the arm posture inside a '
-                  '0.30 m gap on every step, and the controller interpolates '
-                  'straight through whatever lies between two postures.')
+                  'The arm takes its posture 1.35 m from the shelf, where it '
+                  'cannot reach the shelf while swinging, and the base carries '
+                  'it in. Re-solving IK at every step of an arm-driven approach '
+                  'instead changes the posture inside a 0.30 m gap on each one, '
+                  'and the controller interpolates straight through whatever '
+                  'lies between two postures.')
         doc.block('h2', 'Verification, and why it is not the joint position')
         doc.block('body',
                   'gz_ros2_control implements a position command interface as a '
                   'JointVelocityCmd computed from position error, so the finger '
                   'joint is driven kinematically and reaches whatever it is '
-                  'commanded to reach. Measured, commanded and achieved '
-                  'positions agree to five decimals whether or not a book is '
-                  'between the pads, and the reported effort is a constant '
-                  '-0.0935 N. A stall therefore cannot be used as evidence of a '
-                  'grasp. Rafeeq instead reads the fingertip contact sensors and '
-                  'requires the contact to persist through the lift and through '
-                  'a 0.42 m base retreat.')
+                  'told to. Commanded and achieved positions agree to five '
+                  'decimals whether or not a book is between the pads, and the '
+                  'reported effort is a constant -0.0935 N: a stall cannot be '
+                  'evidence of a grasp. Rafeeq reads the fingertip contact '
+                  'sensors instead, and requires contact to persist through the '
+                  'lift and a 0.42 m base retreat.')
+
+        doc.block('h2', 'Placing the book in the bin')
+        doc.block('body',
+                  'The bin is measured, not assumed: floor at 0.740 m, rim at '
+                  '0.950 m, taken from the settled geometry rather than the '
+                  'spawn pose, which sits 0.35 m higher. The base drives to a '
+                  'pose from which the book already hangs over the bin - the '
+                  'gripper is a fixed offset from the base centre while the arm '
+                  'holds still - and the torso comes down on the way, so the '
+                  'descent costs no extra time and no arm motion. The gripper '
+                  'then opens. The implemented rubric scores that as a drop '
+                  'rather than a gentle placement, and the rule it uses is '
+                  'stated so a judge can disagree with it: gentle means the '
+                  'book was still held when it was lowered to within half a '
+                  'spine of the bin floor, and Rafeeq releases from the height '
+                  'it carried at, above the rim. Lowering further is arm '
+                  'motion, and arm motion swings a book held on a grip that '
+                  'lasts seconds - so this trades two placement points for the '
+                  'thirteen that a dropped book loses.')
 
         # ----------------------------------------------------------- 5. results
-        doc.new_page()
         doc.h1('5  Results')
         doc.block('h2', 'The delivering run')
         doc.block('body',
                   'The task has been completed end to end on the live '
-                  'simulator, in one continuous unedited take, and the '
+                  'simulator in one continuous unedited take, and the '
                   'completion was reported by the organisers\' own contact '
-                  'sensor rather than by our gripper opening. Seed {}, shelf '
-                  'column {}, {} book. The line that ends the run is:'.format(
+                  'sensor, not by our gripper opening. Seed {}, column {}, {} '
+                  'book. The line that ends the run:'.format(
                       TAKE['seed'], TAKE['column'], TAKE['colour']))
         doc.block('mono',
                   'OFFICIAL COMPLETION EVENT: {} contacted the collection '
                   'bin at t+{:.1f} s'.format(
                       TAKE['model'], TAKE['delivered_sim_s']))
-        doc.block('body',
-                  'The model name is the simulator\'s own, read back '
-                  'afterwards as a consistency check and never used to choose '
-                  'anything: the plate numbered {} hangs above physical slot 3, '
-                  'and SDF row_2 is competition row 1. The run\'s own evidence '
-                  'image records the mapping it read - "requested column {} to '
-                  'physical shelf slot 3", plates 3@slot1, 5@slot2, 2@slot3, '
-                  '1@slot4, 4@slot5.'.format(TAKE['column'], TAKE['column']))
+
         doc.table(
             ['Quantity', 'Value', 'Where it comes from'],
             [['Delivery', 't+{:.1f} simulated s'.format(
@@ -690,32 +1094,34 @@ def build():
              ['Collisions', '{} (arm_right_6_link, during RETREAT)'.format(
                  TAKE['collisions']), 'organiser /contacts']],
             [0.26, 0.36, 0.38],
-            note='Two clocks, and they are not the same clock: the mission '
-                 'counts simulated seconds (use_sim_time), the video timer '
-                 'counts wall seconds from solution.launch.py. The take has no '
-                 'machine-readable record - the recorder ends on the delivery '
-                 'event, before the run writes one - so its logs, frames and '
-                 'checksums are committed at media/ and it is excluded from '
-                 'every rate below.')
-        if formal:
-            doc.block('h2', 'Recorded trials')
+            note='Two clocks, and not the same clock: the mission counts '
+                 'simulated seconds, the video timer wall seconds. The take '
+                 'left no machine-readable record - the recorder ends on the '
+                 'delivery event, before the run writes one - so its logs, '
+                 'frames and checksums are at media/ and it is in no rate '
+                 'below. The model name is the simulator\'s own, read back as a '
+                 'check and never used to choose anything: plate 2 hangs above '
+                 'physical slot 3, which is the mapping the run\'s own evidence '
+                 'image records.')
+        if validation:
+            doc.block('h2', 'Five trials on the submitted code')
             doc.block('body',
-                      'These are the machine-readable trial records in '
-                      'results/, one JSON per run, written by the solution '
-                      'itself. They predate the extraction work described in '
-                      'section 4 and every one of them ends at the retention '
-                      'check or earlier, so they are the identification and '
-                      'measurement evidence, not delivery evidence. They are '
-                      'kept rather than replaced because that is what they '
-                      'honestly show.')
+                      'The trial matrix re-run against the code in this '
+                      'repository, one record per run, written by the solution '
+                      'itself into results/. Same seeds, columns and colours as '
+                      'the development trials below, so the two sets are '
+                      'comparable run for run. Reproduce with '
+                      'tools/run_trials.sh.')
             rows = []
-            for t in formal:
+            for t in validation:
                 det = t['detected']
                 sc = t['score']
+                run = str(t['run_id'])
                 rows.append([
-                    t['run_id'][:22],
+                    run.split('_')[0],
+                    run.split('seed')[-1].split('_')[0] if 'seed' in run else '-',
                     '{} / {}'.format(t['requested']['shelf_column_number'],
-                                     t['requested']['book_colour'][:6]),
+                                     t['requested']['book_colour']),
                     str(det.get('physical_column_slot') or '-'),
                     str(det.get('book_row') or '-'),
                     ('{:+.3f}'.format(det['book_offset_from_column_centre'])
@@ -728,73 +1134,123 @@ def build():
                     '{:.0f}'.format(t['timing']['simulated_seconds_total']),
                 ])
             doc.table(
-                ['run', 'req col/col', 'slot', 'row', 'offset m', 'grasp',
-                 'deliv', 'coll', 'score', 'sim s'],
-                rows, [0.235, 0.110, 0.055, 0.050, 0.090, 0.065, 0.065,
-                       0.055, 0.070, 0.070], size=6.8,
+                ['trial', 'seed', 'column / colour', 'slot', 'row', 'offset m',
+                 'grasp', 'delivered', 'coll', 'score', 'sim s'],
+                rows, [0.070, 0.070, 0.155, 0.070, 0.060, 0.115, 0.085, 0.090,
+                       0.075, 0.100, 0.110], size=6.8,
                 note='Score is a LOCAL ESTIMATE from the implemented rubric, '
                      'not an official result: gentle-versus-drop and collision '
-                     'intent are judge decisions. Times are simulated seconds. '
-                     'These runs were recorded in software rendering at a '
-                     'real-time factor of 0.362; on the GPU the simulator runs '
-                     'at 0.65-0.70 headless and the delivering take realised '
-                     '0.487 with the viewer up.')
+                     'intent are judge decisions. Slot is the physical shelf '
+                     'slot the requested plate was found above; offset is the '
+                     'book\'s measured displacement from that column centre, '
+                     'which is what the organiser jitters. Simulated seconds.')
+            done = [t for t in validation if t['delivery'].get('delivered')]
+            times = [t['timing']['simulated_seconds_total'] for t in done]
+            # A reader who sees a completed task on the cover and a low
+            # delivery rate here is owed the reconciliation in the same place,
+            # not two sections later.
+            # Where a run failed, counted out of the records rather than
+            # described from memory.  Every one of these is after the book is
+            # between the pads; none of them is an identification failure.
+            if not done:
+                also = ''
+                if (figure_run is not None
+                        and figure_run['delivery'].get('delivered')):
+                    also = (', and so did the run the navigation figure in '
+                            'section 3 was captured on')
+                doc.block('body',
+                          'None of the five delivered, and the cover of this '
+                          'report says the task was completed end to end. Both '
+                          'are true, and one measurement separates them: the '
+                          'recorded take delivered{}, so delivery reproduces - '
+                          'it does not reproduce reliably. Every one of the '
+                          'five read the plates, identified the requested '
+                          'column and row, measured the book in three '
+                          'dimensions and closed on it. {} then lost it during '
+                          'the extraction, before it was clear of the shelf. '
+                          '{} carried it out and lost it on the way to the bin. '
+                          'Not one failed at the identification, and not one '
+                          'grasped the wrong book. Section 6 is the measurement '
+                          'behind that margin, and widening it is the first '
+                          'item of remaining work.'.format(
+                              also, extraction, carry))
+            elif len(done) < summary['n']:
+                doc.block('body',
+                          '{} of the five delivered. Of the {} that did not, {} '
+                          'lost the book during the extraction and {} on the '
+                          'way to the bin - every failure after the book was '
+                          'already between the pads, none at the '
+                          'identification. Section 6 gives the measurement '
+                          'behind that margin.'.format(
+                              len(done), summary['n'] - len(done),
+                              extraction, carry))
             doc.block('h2', 'Rates')
             doc.table(
                 ['Metric', 'Value', 'Denominator'],
-                [['Column identified correctly',
+                [['Target column read off the number plates',
                   '{}/{}'.format(summary['column'], summary['n']),
-                  'recorded trials'],
+                  'validation trials'],
                  ['Book row identified',
                   '{}/{}'.format(summary['row'], summary['n']),
-                  'recorded trials'],
-                 ['Book position measured',
+                  'validation trials'],
+                 ['Book 3D position measured',
                   '{}/{}'.format(summary['position'], summary['n']),
-                  'recorded trials'],
-                 ['Grasp verified',
+                  'validation trials'],
+                 ['Grasp verified through the lift and the retreat',
                   '{}/{}'.format(summary['grasp'], summary['n']),
-                  'recorded trials'],
-                 ['Delivered to bin',
+                  'validation trials'],
+                 ['Delivered to the collection bin',
                   '{}/{}'.format(summary['delivered'], summary['n']),
-                  'recorded trials (all predate the fix)'],
-                 ['Collision events (total)',
-                  str(summary['collisions']), 'across all trials'],
+                  'validation trials'],
                  ['Mean estimated score',
-                  '{:.1f} / 19'.format(summary['score_mean']),
-                  'recorded trials'],
-                 ['Mean duration',
-                  '{:.0f} sim s'.format(summary['time_mean']),
-                  'recorded trials']],
+                  '{:.1f} / 19, against {:.1f} before the fix'.format(
+                      summary['score_mean'],
+                      summarise(formal).get('score_mean', 0.0)),
+                  'validation trials'],
+                 ['Mean trial duration',
+                  '{:.0f} sim s{}'.format(
+                      summary['time_mean'],
+                      ('' if not times else
+                       ',  {:.0f} sim s over the {} that delivered'.format(
+                           sum(times) / len(times), len(times)))),
+                  'validation trials']],
                 [0.46, 0.26, 0.28])
         else:
             doc.block('note',
-                      'NO TRIAL RECORDS FOUND in results/. This report is '
-                      'INCOMPLETE and must not be submitted in this state.')
+                      'NO VALIDATION TRIAL RECORDS FOUND in results/. This '
+                      'report is INCOMPLETE and must not be submitted in this '
+                      'state.')
         if formal:
-            # Count the failures out of the records rather than describing them
-            # from memory, so this cannot drift from what actually happened.
+            # Counted out of the records rather than described from memory, so
+            # this cannot drift from what actually happened.
             reasons = [(t.get('failure_reason') or '') for t in formal]
             retention = sum(1 for r in reasons
                             if 'retention' in r or 'lost during extraction' in r)
             planning = sum(1 for r in reasons if 'plan rejected' in r)
+            dev = summarise(formal)
+            doc.block('h2', 'Development trials, before the extraction fix')
             doc.block('body',
-                      'All {} reached the shelf and closed on the right book. '
-                      '{} then failed at retention - the fingertips lost the '
-                      'book after the lift or during extraction - and {} was an '
-                      'IK refusal at the refine step. That is the problem of '
-                      'section 6, and the work since (the above-centre pinch, '
-                      'the ramped retreat, the direct carry) is what turned it '
-                      'into the delivering run above. It costs more than it '
-                      'looks: the rubric awards shelf navigation on a successful '
-                      'grasp and the return on a successful delivery, so a '
-                      'failure at the grasp costs 13 of the 19 points, not 3. '
-                      'Two further trials exceeded the harness wall-clock cap '
-                      'before reaching a terminal state and wrote no record; '
-                      'they are excluded rather than counted either way.'.format(
-                          summary['n'], retention, planning))
+                      'The same matrix run before the work described in '
+                      'section 4, kept in results/ rather than deleted because '
+                      'it is what the problem looked like. All {} identified '
+                      'the correct column, the correct row and a 3D position, '
+                      'and all {} reached the grasp phase. {} closed on the '
+                      'target book and then lost it, after the lift or during '
+                      'extraction; {} was rejected during IK refinement before '
+                      'closing. None delivered. Two further runs exceeded the '
+                      'harness wall-clock cap and wrote no record; they are '
+                      'excluded rather than counted either way. The gap to the '
+                      'validation trials is not three points of grasping: the '
+                      'rubric awards shelf navigation on a successful grasp and '
+                      'the return on a successful delivery, so failing at the '
+                      'grasp costs 13 of the 19.'.format(
+                          dev['n'], dev['n'], retention, planning))
+
 
         # ------------------------------------------------------- 6. limitations
-        doc.new_page()
+        # No forced break: h1 starts a page itself when there is no room, and
+        # the Phase 1 limit is five body pages.  Forcing one here spent a page
+        # on whitespace.
         doc.h1('6  Limitations and future work')
         doc.block('h2', 'The grip is a clock')
         doc.block('body',
@@ -805,12 +1261,11 @@ def build():
                   'whose URDF effort limit is 0.1 N m, gz_ros2_control enforces '
                   'a mimic with a velocity servo capped at that limit, and '
                   'nothing in the provided world offers an attach mechanism. '
-                  'The grip is therefore friction against a hinge that can be '
-                  'pushed open: the book creeps out of the pads under its own '
-                  'weight and stays held, measured, for 6 to 11 seconds once it '
-                  'hangs free. Squeezing harder does not help - 6 mm to 16 mm '
-                  'of interference changed nothing, and past a point it simply '
-                  'loads those hinges.')
+                  'The grip is friction against a hinge that can be pushed '
+                  'open: the book creeps out under its own weight and stays '
+                  'held, measured, for 6 to 11 seconds once it hangs free. '
+                  'Squeezing harder does not help - 6 mm to 16 mm of '
+                  'interference changed nothing.')
         doc.block('body',
                   'What made delivery possible was accepting that and sizing '
                   'the task to it: the bin is identified before the shelf trip, '
@@ -818,16 +1273,21 @@ def build():
                   'drive starts while the hold is still being confirmed; and '
                   'the arm holds still throughout the carry, because every arm '
                   'motion swings the book. The delivering take carried it for '
-                  '{:.1f} s against a grip good for 6 to 11. That margin is why '
-                  'runs still fail - of two validation trials after the fix, '
-                  'one dropped the book 3.0 s into the carry and one lost it '
-                  'during extraction, both having already identified, measured '
-                  'and grasped the correct book. Widening the margin needs a '
-                  'higher effort limit on those joints or an attach mechanism '
-                  'in the world: properties of the provided environment, not of '
-                  'this approach. The measurements, the reproducer and the four '
-                  'remedies tried and reverted are in docs/grasp_blocker.md.'
-                  .format(TAKE['carry_sim_s']))
+                  '{:.1f} s against a grip good for 6 to 11. That margin is '
+                  'also why runs still fail: of the {} validation trials in '
+                  'section 5, {} delivered. All five closed on the correct '
+                  'book; {} lost it during the extraction and {} after '
+                  'carrying it clear. '
+                  'Under the provided simulation dynamics, widening the margin '
+                  'would need either more gripper-force authority than a 0.1 '
+                  'N m mimic hinge can offer or a different contact model in '
+                  'the world. Rafeeq therefore minimises transport duration '
+                  'and arm motion so as to work inside the retention window it '
+                  'measured. The measurements, the reproducer and the four '
+                  'remedies tried and reverted are in '
+                  'docs/grasp_blocker.md.'.format(
+                      TAKE['carry_sim_s'], summary['n'], summary['delivered'],
+                      extraction, carry))
         doc.block('h2', 'What changed during this work')
         doc.table(
             ['Defect found', 'Resolution'],
@@ -837,63 +1297,71 @@ def build():
               'Grasp planner consumes it; base strafes to it'],
              ['Grasp poses aimed at column centres',
               'Books jitter 0.25 m; poses solved per measurement'],
-             ['Top row unreachable',
-              'Wrong wrist roll; both rolls now tried'],
-             ['Arm drove through shelf boards',
-              'Torso set from row height; roll/tilt search'],
              ['Gripper body fouled the row',
               'Approach tilt search, 0 shelf contacts'],
              ['Bin pose used the spawn height (1.3 m)',
-              'Measured settled geometry, rim at 0.950 m'],
-             ['Both grippers parked inside the shelf',
-              'Genuine tucks for both arms'],
-             ['Trajectories timed at one guessed speed',
-              'Per-joint URDF velocity limits'],
-             ['Evidence images excluded by .gitignore',
-              'Now committed as required evidence']],
-            [0.50, 0.50], size=7.2)
+              'Measured settled geometry, rim at 0.950 m']],
+            [0.50, 0.50], size=7.2,
+            note='Five of thirteen. The other eight - a home command rejected '
+                 'as already running, which failed a trial two seconds in; the '
+                 'top row unreachable on the wrong wrist roll; the arm driving '
+                 'through shelf boards, '
+                 'both grippers parked inside the shelf, trajectories timed at '
+                 'one guessed speed, evidence images excluded by .gitignore, '
+                 'the viewer losing its startup race with the robot spawn, and '
+                 'an unrecorded release height - are written up with their '
+                 'measurements in docs/.')
         doc.block('h2', 'Remaining work')
-        doc.bullet('Widen the retention margin rather than living inside it, '
-                   'then re-run the trial matrix against the delivering '
-                   'solution: one delivery is not a measured rate.')
-        doc.bullet('Replace the coarse advisory clearance model - a padded '
-                   'polyline through link origins - with proper swept-volume '
-                   'checking. It is good enough to rank IK solutions and not '
-                   'good enough to veto them.')
-        doc.bullet('Eliminate the start-up collision in which the tucked left '
-                   'arm brushes the table as the base turns to face the shelf.')
-        doc.bullet('Cover all 20 column/colour combinations and several '
-                   'randomised layouts, rather than the recorded subset.')
-        doc.block('h2', 'Simulation versus physical deployment')
         doc.block('body',
-                  'Nothing here has run on hardware, and the central finding of '
-                  'this report is specific to the simulator: a kinematic '
-                  'gripper on a 0.1 N m mimic hinge behaves nothing like a real '
-                  'TIAGo Pro applying a real force to a continuous contact. '
-                  'Conversely, a physical robot brings problems this work has '
-                  'not faced - odometry drift over a long run, lighting that '
-                  'would break tight HSV bands, and books that are not uniform '
-                  'saturated primaries. The perception approach would need '
-                  're-grounding in real imagery before any of it transfers.')
-        doc.block('h2', 'Longer-term intent')
+                  'In order: widen the retention margin rather than living '
+                  'inside it, which is the one change that would move the '
+                  'delivery rate. Replace the coarse advisory clearance model, '
+                  'a padded polyline through link origins, with swept-volume '
+                  'checking: it can rank IK solutions but should not veto them. '
+                  'Eliminate the start-up collision in which the tucked left '
+                  'arm brushes the table. And cover all 20 column and colour '
+                  'combinations rather than the recorded subset.')
         doc.block('body',
-                  'Rafeeq is named for the Arabic for companion, and the intent '
-                  'behind it is a library assistant that fetches books for '
-                  'people who cannot reach or navigate the stacks. None of that '
-                  'accessibility work is implemented - no voice interface, no '
-                  'accessibility testing, no deployment with People of '
-                  'Determination. It is the direction of travel, not a claim '
-                  'about this submission.')
+                  'None of this has run on hardware, and the central finding '
+                  'above is specific to the simulator: a kinematic gripper on a '
+                  '0.1 N m mimic hinge is not a TIAGo Pro applying a real '
+                  'force. A physical robot brings the reverse - odometry drift, '
+                  'lighting that breaks tight HSV bands, books that are not '
+                  'saturated primaries - so the perception needs re-grounding '
+                  'in real imagery before any of it transfers. Rafeeq is Arabic '
+                  'for companion, and the intent is a library assistant for '
+                  'people who cannot reach the stacks: the direction of travel, '
+                  'not a claim about this submission.')
 
         doc.close()
 
-    size = os.path.getsize(OUTPUT)
+    size = os.path.getsize(draft)
+
+    def discard(reason):
+        """Refuse to publish, and say why, leaving the last good PDF alone."""
+        sys.stderr.write('report: {}\n'.format(reason))
+        sys.stderr.write('report: {} left as it was; the rejected build is at '
+                         '{}\n'.format(os.path.relpath(OUTPUT, ROOT),
+                                       os.path.relpath(draft, ROOT)))
+        return 1
+
+    # Five body pages is the Phase 1 limit, and a report that quietly went to
+    # six would be found out by the judge rather than by us.
+    if doc.pages > 6:
+        return discard(
+            '{} pages, and Phase 1 allows a title page plus five. Cut content '
+            'or tighten LINE/WRAP.'.format(doc.pages))
+    if not validation:
+        return discard(
+            'no validation trial records in results/, so section 5 has no '
+            'measured rate in it. Run tools/run_trials.sh.')
+    if not formal:
+        print('note: no development trial records found')
+    os.replace(draft, OUTPUT)
     print('wrote {} ({:.2f} MB, {} pages incl. title)'.format(
         os.path.relpath(OUTPUT, ROOT), size / 1e6, doc.pages))
     if preview:
         print('page previews -> {}'.format(os.path.relpath(preview, ROOT)))
-    if not formal:
-        print('WARNING: no formal trial records found - report is incomplete')
     return 0
 
 

@@ -45,10 +45,10 @@ Visualization Manager:
         Durability Policy: Transient Local
         Reliability Policy: Reliable
         Value: /rafeeq/nav/planned_path
-      Color: 25; 200; 90
+      Color: 30; 110; 220
       Alpha: 1
       Line Style: Billboards
-      Line Width: 0.05
+      Line Width: 0.055
       Offset:
         X: 0
         Y: 0
@@ -65,7 +65,7 @@ Visualization Manager:
       Color: 245; 130; 30
       Alpha: 1
       Line Style: Billboards
-      Line Width: 0.035
+      Line Width: 0.040
       Offset:
         X: 0
         Y: 0
@@ -79,8 +79,9 @@ Visualization Manager:
         Durability Policy: Volatile
         Reliability Policy: Best Effort
         Value: /scan_front_raw
-      Color: 70; 120; 200
-      Size (m): 0.03
+      Color: 150; 160; 170
+      Color Transformer: FlatColor
+      Size (m): 0.02
       Style: Points
       Decay Time: 0
   Global Options:
@@ -94,19 +95,19 @@ Visualization Manager:
     Current:
       Class: rviz_default_plugins/Orbit
       Name: Current View
-      Distance: 8.5
+      Distance: 4.6
       Focal Point:
-        X: 1.0
-        Y: 0.0
-        Z: 0.4
-      Pitch: 0.92
-      Yaw: 4.55
+        X: 0.65
+        Y: -0.60
+        Z: 0.20
+      Pitch: 1.35
+      Yaw: 3.1416
       Target Frame: odom
       Near Clip Distance: 0.01
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1000
-  Width: 1500
+  Height: 700
+  Width: 2000
   Hide Left Dock: false
   Hide Right Dock: true

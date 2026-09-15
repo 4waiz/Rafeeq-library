@@ -1,0 +1,160 @@
+{
+  "delivery": {
+    "colour_matches": true,
+    "contact_time_s": 103.86,
+    "delivered": true,
+    "model": "book_col_3_row_2_red"
+  },
+  "detected": {
+    "bin_point_world": [
+      -0.9202350389111726,
+      -0.06378849728466553,
+      0.95
+    ],
+    "book_offset_from_column_centre": -0.158,
+    "book_offset_measured_against": "plate re-read from the book-scan pose",
+    "book_point_world": [
+      2.873734388439926,
+      -0.3550086634567818,
+      1.5817061066289055
+    ],
+    "book_row": 1,
+    "column_point_world": [
+      2.7376629896075024,
+      -0.19728520725625165,
+      2.2602213220712004
+    ],
+    "physical_column_slot": 3
+  },
+  "evidence": {
+    "book_image": "/opt/erc_ws/erc_images/target_book_20260912_195059_396.png",
+    "column_image": "/opt/erc_ws/erc_images/shelf_column_20260912_195012_598.png"
+  },
+  "failure_reason": "",
+  "grasp": {
+    "attempts": 0,
+    "held_width": 0.0,
+    "plan": {
+      "grasp": "2.2562,-0.3317,0.0000",
+      "ik_error": "0.0030",
+      "release_z": 1.5210000000000001,
+      "retreat": "1.9162,-0.3317,0.0000",
+      "roll": "-y",
+      "spine_offset": "+0.072",
+      "stage": "1.5062,-0.3317,0.0000"
+    }
+  },
+  "outcome": "completed",
+  "requested": {
+    "book_colour": "red",
+    "shelf_column_number": 2
+  },
+  "run_id": "FIG_seed101_col2_red",
+  "score": {
+    "collisions": {
+      "cooldown_seconds": 1.0,
+      "count": 1,
+      "events": [
+        {
+          "link": "tiago_pro::arm_right_6_link::arm_right_6_link_collision",
+          "object": "book_col_3_row_2_red",
+          "state": "RETREAT",
+          "time": 122.244
+        }
+      ],
+      "penalty": 0.5,
+      "penalty_per_event": 0.5
+    },
+    "disclaimer": "Local estimate. Gentle-vs-drop classification and collision intent are judge decisions; see docs for the rule used here.",
+    "gross": 17.0,
+    "maximum_drop": 17.0,
+    "maximum_gentle": 19.0,
+    "notes": [],
+    "placement": {
+      "available_drop": 2.0,
+      "available_gentle": 4.0,
+      "kind": "drop",
+      "points": 2.0,
+      "reason": "released at z=1.521 m, 0.781 m above the bin floor"
+    },
+    "placement_total": 2.0,
+    "stage_total": 15.0,
+    "stages": {
+      "column_image": {
+        "available": 2.0,
+        "awarded": true,
+        "evidence": "/opt/erc_ws/erc_images/shelf_column_20260912_195012_598.png",
+        "points": 2.0
+      },
+      "column_topic": {
+        "available": 1.0,
+        "awarded": true,
+        "evidence": "published 2 on /erc/shelf_column_identification after the marker was read",
+        "points": 1.0
+      },
+      "grasp": {
+        "available": 3.0,
+        "awarded": true,
+        "evidence": "pads stalled at held=book_col_3_row_2_red tool=0.572,-0.023,1.671 torso=0.350 and the book stayed held through extraction",
+        "points": 3.0
+      },
+      "navigate_shelf": {
+        "available": 3.0,
+        "awarded": true,
+        "evidence": "grasp succeeded at column 3",
+        "points": 3.0
+      },
+      "return_with_book": {
+        "available": 3.0,
+        "awarded": true,
+        "evidence": "book carried back and delivered; book_col_3_row_2_red contacted the bin",
+        "points": 3.0
+      },
+      "row_image": {
+        "available": 2.0,
+        "awarded": true,
+        "evidence": "/opt/erc_ws/erc_images/target_book_20260912_195044_766.png",
+        "points": 2.0
+      },
+      "row_topic": {
+        "available": 1.0,
+        "awarded": true,
+        "evidence": "published row 1 on /erc/shelf_row_identification",
+        "points": 1.0
+      }
+    },
+    "total_estimate": 16.5
+  },
+  "timing": {
+    "simulated_seconds_total": 117.02,
+    "stage_seconds": {
+      "ARM_PREGRASP": 7.0,
+      "BACK_OFF": 6.6,
+      "BIN_POSE": 1.0,
+      "BOOK_POSE": 3.0,
+      "CARRY_TO_BIN": 7.8,
+      "CLOSE_GRASP": 8.8,
+      "COLUMN_REF": 0.6,
+      "COLUMN_REF_POSE": 2.0,
+      "CONFIRM_DELIVERY": 0.2,
+      "CONFIRM_HOLD": 1.2,
+      "DETECT_BIN": 1.6,
+      "DETECT_BOOK": 3.0,
+      "DETECT_COLUMN": 2.4,
+      "FACE_BIN": 3.6,
+      "FACE_SHELF": 5.4,
+      "HOME": 14.8,
+      "LIFT": 2.2,
+      "NAV_COLUMN": 8.4,
+      "NAV_GRASP": 10.6,
+      "NAV_STAGE": 4.4,
+      "PLAN_GRASP": 3.0,
+      "REFINE": 1.4,
+      "REFRESH_BOOK": 3.8,
+      "RELEASE": 2.2,
+      "RETREAT": 4.0,
+      "SCAN_POSE": 3.0,
+      "WAIT_READY": 2.02
+    }
+  }
+}

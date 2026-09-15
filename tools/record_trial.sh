@@ -102,7 +102,19 @@ printf '  Recorded %s\n' "\$(TZ=Asia/Dubai date '+%Y-%m-%d %H:%M UAE')"
 sleep 100000
 EOF
 chmod +x "$WORK/title.sh"
-LOGO="${LOGO:-/tmp/rafeeq_logo.png}"
+# The title card's logo, found by name rather than by extension: the asset was
+# a .png, became a .jpeg, and everything that named the old extension lost its
+# logo without saying so.  A staged copy is preferred (the repository is not
+# always mounted in the container), then the repository's own asset.
+LOGO="${LOGO:-}"
+if [ -z "$LOGO" ]; then
+    for candidate in /tmp/rafeeq_logo.png /tmp/rafeeq_logo.jpeg \
+                     /tmp/rafeeq_logo.jpg \
+                     /opt/erc_ws/src/*/docs/assets/rafeeq_logo.* \
+                     /opt/erc_ws/docs/assets/rafeeq_logo.*; do
+        [ -f "$candidate" ] && { LOGO="$candidate"; break; }
+    done
+fi
 
 # The timer.  Starts when solution.launch.py is launched and freezes when the
 # mission reports its result (or the take is abandoned).
